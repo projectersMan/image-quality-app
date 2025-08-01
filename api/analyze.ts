@@ -91,9 +91,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     
-    res.status(500).json({ 
+    res.status(500).json({
       error: '图像分析服务暂时不可用，请稍后再试',
-      details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+      details: process.env.NODE_ENV === 'development' ? (error as Error)?.message : undefined
     });
   }
 }
