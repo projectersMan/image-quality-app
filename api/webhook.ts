@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (err) {
-    console.error('Webhook签名验证失败:', err.message);
+    console.error('Webhook签名验证失败:', (err as Error).message);
     return res.status(400).json({ error: 'Webhook签名验证失败' });
   }
 

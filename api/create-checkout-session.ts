@@ -56,9 +56,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json({ sessionId: session.id });
   } catch (error) {
     console.error('创建Stripe会话错误:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: '创建支付会话失败',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     });
   }
 }
