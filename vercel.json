@@ -15,11 +15,5 @@
       "source": "/api/(.*)",
       "destination": "/api/$1"
     }
-  ],
-  "env": {
-    "REPLICATE_API_TOKEN": "@replicate_api_token",
-    "CLERK_SECRET_KEY": "@clerk_secret_key",
-    "STRIPE_SECRET_KEY": "@stripe_secret_key",
-    "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret"
-  }
+  ]
 }
