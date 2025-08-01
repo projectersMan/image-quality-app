@@ -1,0 +1,41 @@
+{
+  "functions": {
+    "api/analyze.ts": {
+      "maxDuration": 30
+    },
+    "api/create-checkout-session.ts": {
+      "maxDuration": 10
+    },
+    "api/webhook.ts": {
+      "maxDuration": 10
+    }
+  },
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "env": {
+    "REPLICATE_API_TOKEN": "@replicate_api_token",
+    "CLERK_SECRET_KEY": "@clerk_secret_key",
+    "STRIPE_SECRET_KEY": "@stripe_secret_key",
+    "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret"
+  }
+}
