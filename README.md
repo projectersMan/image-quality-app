@@ -112,6 +112,30 @@ vercel --prod
 }
 ```
 
+### POST /api/upscale
+图像超分辨率处理。
+
+> 📖 **Replicate API参考**: [https://replicate.com/docs](https://replicate.com/docs)
+> 🚀 **使用的AI模型**: Real-ESRGAN 超分辨率模型
+> 🔗 **模型页面**: [nightmareai/real-esrgan](https://replicate.com/nightmareai/real-esrgan)
+
+**请求参数:**
+- `imageBase64`: Base64编码的图像数据 (JSON)
+- `scale`: 放大倍数 (2, 4, 8)
+- `face_enhance`: 是否启用面部增强 (boolean)
+
+**响应示例:**
+```json
+{
+  "success": true,
+  "upscaled_image": "https://...",
+  "scale": 2,
+  "face_enhance": true,
+  "message": "图像超分处理完成",
+  "timestamp": "2025-01-01T12:00:00Z"
+}
+```
+
 ### POST /api/create-checkout-session
 创建Stripe支付会话。
 
@@ -145,8 +169,9 @@ vercel --prod
 - ⚡ [Vite构建文档](https://vitejs.dev/guide/) - 前端构建工具
 
 **项目相关文档：**
-- 📖 [详细部署指南](./DEPLOYMENT.md) - 完整部署流程
-- 🔑 [Clerk配置指南](./CLERK_SETUP.md) - 用户认证详细设置
+- 📖 [详细部署指南](./doc/DEPLOYMENT.md) - 完整部署流程
+- 🔑 [Clerk配置指南](./doc/CLERK_SETUP.md) - 用户认证详细设置
+- 🛠️ [开发者快速参考](./doc/DEV_REFERENCE.md) - 常用链接和配置
 
 ### 项目结构
 ```

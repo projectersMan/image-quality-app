@@ -15,6 +15,11 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
+  // 超分功能状态
+  const [upscaledImage, setUpscaledImage] = useState<string | null>(null);
+  const [isUpscaling, setIsUpscaling] = useState(false);
+  const [upscaleScale, setUpscaleScale] = useState<number>(2);
+
   // 处理文件选择
   const handleFileSelect = useCallback((selectedFile: File) => {
     if (selectedFile && selectedFile.type.startsWith('image/')) {
@@ -132,6 +137,51 @@ function App() {
     }
   };
 
+  // 处理图像超分
+  const handleUpscale = async () => {
+    if (!file) {
+      setError('请先选择图像');
+      return;
+    }
+
+    setIsUpscaling(true);
+    setError(null);
+
+    try {
+      // 将文件转换为base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const imageBase64 = e.target?.result as string;
+
+        const response = await fetch('/api/upscale', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageBase64,
+            scale: upscaleScale,
+            face_enhance: true
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setUpscaledImage(data.upscaled_image);
+        } else {
+          setError(data.error || '超分处理失败');
+        }
+      };
+
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '超分处理过程中出现错误');
+    } finally {
+      setIsUpscaling(false);
+    }
+  };
+
   // 获取评分显示样式
   const getScoreStyle = (score: number) => {
     if (score >= 8) return { background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' };
@@ -208,22 +258,55 @@ function App() {
             )}
           </div>
 
-          {/* 分析按钮 */}
+          {/* 功能按钮组 */}
           {file && (
-            <button 
-              className="analyze-btn"
-              onClick={handleAnalyze}
-              disabled={isAnalyzing}
-            >
-              {isAnalyzing ? (
-                <>
-                  <span className="loading"></span>
-                  分析中...
-                </>
-              ) : (
-                '🤖 开始AI分析'
-              )}
-            </button>
+            <div className="button-group">
+              <button
+                className="analyze-btn"
+                onClick={handleAnalyze}
+                disabled={isAnalyzing}
+              >
+                {isAnalyzing ? (
+                  <>
+                    <span className="loading"></span>
+                    分析中...
+                  </>
+                ) : (
+                  '🤖 开始AI分析'
+                )}
+              </button>
+
+              <div className="upscale-section">
+                <div className="upscale-controls">
+                  <label htmlFor="scale-select">放大倍数:</label>
+                  <select
+                    id="scale-select"
+                    value={upscaleScale}
+                    onChange={(e) => setUpscaleScale(Number(e.target.value))}
+                    disabled={isUpscaling}
+                  >
+                    <option value={2}>2x</option>
+                    <option value={4}>4x</option>
+                    <option value={8}>8x</option>
+                  </select>
+                </div>
+
+                <button
+                  className="upscale-btn"
+                  onClick={handleUpscale}
+                  disabled={isUpscaling}
+                >
+                  {isUpscaling ? (
+                    <>
+                      <span className="loading"></span>
+                      超分处理中...
+                    </>
+                  ) : (
+                    '🚀 AI超分辨率'
+                  )}
+                </button>
+              </div>
+            </div>
           )}
 
           {/* 错误显示 */}
@@ -246,6 +329,40 @@ function App() {
               <div>质量评分: {score.toFixed(1)}/10</div>
               <div style={{ fontSize: '1rem', marginTop: '0.5rem' }}>
                 {getScoreText(score)}
+              </div>
+            </div>
+          )}
+
+          {/* 超分结果显示 */}
+          {upscaledImage && (
+            <div className="upscale-result">
+              <h3>🚀 超分辨率结果</h3>
+              <div className="image-comparison">
+                <div className="comparison-item">
+                  <h4>原图</h4>
+                  <img
+                    src={imagePreview || ''}
+                    alt="原图"
+                    style={{ maxWidth: '100%', height: 'auto', border: '1px solid #333' }}
+                  />
+                </div>
+                <div className="comparison-item">
+                  <h4>超分结果 ({upscaleScale}x)</h4>
+                  <img
+                    src={upscaledImage}
+                    alt="超分结果"
+                    style={{ maxWidth: '100%', height: 'auto', border: '1px solid #333' }}
+                  />
+                  <div style={{ marginTop: '1rem' }}>
+                    <a
+                      href={upscaledImage}
+                      download={`upscaled_${upscaleScale}x_${file?.name || 'image'}`}
+                      className="download-btn"
+                    >
+                      📥 下载超分图像
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
           )}
