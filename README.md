@@ -97,8 +97,11 @@ vercel --prod
 ### POST /api/analyze
 分析上传的图像质量。
 
+> 📖 **Replicate API参考**: [https://replicate.com/docs](https://replicate.com/docs)
+> 🤖 **使用的AI模型**: LLAVA-13B 图像理解模型
+
 **请求参数:**
-- `image`: 图像文件 (multipart/form-data)
+- `imageBase64`: Base64编码的图像数据 (JSON)
 
 **响应示例:**
 ```json
@@ -131,6 +134,19 @@ vercel --prod
 - **部署平台**: Vercel
 
 ## 🔧 开发指南
+
+### 📚 开发者快速参考
+
+**常用文档链接（编辑时查询）：**
+- 🤖 [Replicate API文档](https://replicate.com/docs) - AI模型调用和配置
+- 🔐 [Clerk认证文档](https://clerk.com/docs) - 用户认证和管理
+- 💳 [Stripe支付文档](https://stripe.com/docs) - 支付集成和Webhook
+- 🚀 [Vercel部署文档](https://vercel.com/docs) - 部署和函数配置
+- ⚡ [Vite构建文档](https://vitejs.dev/guide/) - 前端构建工具
+
+**项目相关文档：**
+- 📖 [详细部署指南](./DEPLOYMENT.md) - 完整部署流程
+- 🔑 [Clerk配置指南](./CLERK_SETUP.md) - 用户认证详细设置
 
 ### 项目结构
 ```
