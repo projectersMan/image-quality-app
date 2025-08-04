@@ -1,7 +1,18 @@
+/**
+ * 图像质量分析API
+ *
+ * 📖 Replicate文档: https://replicate.com/docs
+ * 🤖 使用模型: LLAVA-13B 图像理解模型
+ *
+ * 环境变量:
+ * - REPLICATE_API_TOKEN: Replicate API密钥
+ */
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Replicate from 'replicate';
 
 // 初始化Replicate客户端
+// 文档: https://replicate.com/docs/reference/node
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
