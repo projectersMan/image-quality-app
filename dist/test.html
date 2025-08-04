@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Vercel部署测试成功！</h1>
+        <p>如果你能看到这个页面，说明Vercel部署是正常的。</p>
+        <p>当前时间: <span id="time"></span></p>
+        <button onclick="testFunction()">测试JavaScript</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // 显示当前时间
+        document.getElementById('time').textContent = new Date().toLocaleString();
+        
+        // 测试JavaScript功能
+        function testFunction() {
+            document.getElementById('result').innerHTML = '<p style="color: #4CAF50;">✅ JavaScript正常工作！</p>';
+        }
+        
+        // 测试控制台输出
+        console.log('测试页面加载成功');
+    </script>
+</body>
+</html>

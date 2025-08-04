@@ -3,6 +3,9 @@
     "api/analyze.ts": {
       "maxDuration": 30
     },
+    "api/upscale.ts": {
+      "maxDuration": 60
+    },
     "api/create-checkout-session.ts": {
       "maxDuration": 10
     },
