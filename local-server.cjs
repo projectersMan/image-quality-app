@@ -169,6 +169,45 @@ app.post('/api/upscale', async (req, res) => {
   }
 });
 
+// AI分析接口
+app.post('/api/analyze', async (req, res) => {
+  try {
+    const { imageUrl, imageBase64 } = req.body;
+
+    if (!imageUrl && !imageBase64) {
+      return res.status(400).json({ 
+        error: '请提供图片URL或base64数据' 
+      });
+    }
+
+    // 检查Replicate API token
+    if (!process.env.REPLICATE_API_TOKEN) {
+      return res.status(500).json({ 
+        error: 'Replicate API Token未配置',
+        message: '请在.env.local文件中配置真实的REPLICATE_API_TOKEN',
+        suggestion: '获取Token地址: https://replicate.com/account/api-tokens'
+      });
+    }
+
+    // 模拟AI分析结果（实际环境中会调用Replicate API）
+    const mockScore = Math.random() * 4 + 6; // 6-10之间的随机分数
+    
+    res.status(200).json({
+      score: Math.round(mockScore * 10) / 10, // 保留一位小数
+      message: '分析完成（模拟）',
+      timestamp: new Date().toISOString(),
+      note: '这是本地开发服务器的模拟响应'
+    });
+
+  } catch (error) {
+    console.error('AI分析错误:', error);
+    res.status(500).json({
+      error: '图像分析服务暂时不可用，请稍后再试',
+      details: error.message
+    });
+  }
+});
+
 // 健康检查
 app.get('/api/health', (req, res) => {
   res.json({
@@ -185,6 +224,7 @@ app.get('/', (req, res) => {
     message: '本地API服务器运行中',
     endpoints: [
       'POST /api/upscale - 图像超分处理',
+      'POST /api/analyze - AI图像质量分析',
       'GET /api/health - 健康检查'
     ],
     timestamp: new Date().toISOString()
@@ -218,6 +258,7 @@ app.listen(PORT, () => {
   console.log(`🔧 环境: ${process.env.NODE_ENV}`);
   console.log(`📋 可用接口:`);
   console.log(`   POST http://localhost:${PORT}/api/upscale`);
+  console.log(`   POST http://localhost:${PORT}/api/analyze`);
   console.log(`   GET  http://localhost:${PORT}/api/health`);
   console.log(`\n💡 提示: 请确保设置了REPLICATE_API_TOKEN环境变量`);
 });

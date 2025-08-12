@@ -18,12 +18,25 @@ const DEBUG_CONFIG = {
 class APIDebugger {
   constructor() {
     this.logDir = path.join(process.cwd(), 'debug', 'logs');
-    this.ensureLogDir();
+    // 仅在非Vercel环境下创建日志目录
+    if (!process.env.VERCEL) {
+      this.ensureLogDir();
+    }
   }
 
   ensureLogDir() {
-    if (!fs.existsSync(this.logDir)) {
-      fs.mkdirSync(this.logDir, { recursive: true });
+    // 在Vercel环境下跳过目录创建，避免权限错误
+    if (process.env.VERCEL) {
+      return;
+    }
+    
+    try {
+      if (!fs.existsSync(this.logDir)) {
+        fs.mkdirSync(this.logDir, { recursive: true });
+      }
+    } catch (error) {
+      console.warn('无法创建日志目录:', error.message);
+      // 在Vercel等只读环境中，忽略目录创建错误
     }
   }
 
