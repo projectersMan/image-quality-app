@@ -7,6 +7,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const Replicate = require('replicate');
 
 // 简单的日志记录器
 class LocalLogger {
@@ -148,9 +149,41 @@ app.use((req, res, next) => {
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 process.env.VERCEL = false;
 
-// 创建模拟的upscale处理函数
+// 初始化Replicate客户端
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN,
+});
+
+// Replicate API调用函数
+async function callReplicateUpscale(imageBase64, scale, model, face_enhance) {
+  let modelConfig;
+  
+  if (model === 'aura-sr-v2') {
+    modelConfig = {
+      id: "zsxkib/aura-sr-v2:5c137257cce8d5ce16e8a334b70e9e025106b5580affed0bc7d48940b594e74c",
+      input: {
+        image: imageBase64,
+        upscale_factor: scale,
+      }
+    };
+  } else {
+    modelConfig = {
+      id: "nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa",
+      input: {
+        image: imageBase64,
+        scale: scale,
+        face_enhance: face_enhance,
+      }
+    };
+  }
+  
+  const output = await replicate.run(modelConfig.id, { input: modelConfig.input });
+  return typeof output === 'string' ? output : (Array.isArray(output) ? output[0] : String(output));
+}
+
+// 创建超分处理函数
 function createUpscaleHandler() {
-  return (req, res) => {
+  return async (req, res) => {
     const startTime = Date.now();
     logger.logRequest('/api/upscale', req);
     
@@ -221,26 +254,22 @@ function createUpscaleHandler() {
         imageSize: imageBase64.length
       });
       
-      // 生成一个简单的模拟超分图片（原图的副本，实际应用中会调用真实API）
-      const mockUpscaledImage = imageBase64; // 在本地仿真中，直接返回原图作为超分结果
+      // 调用真实的Replicate API进行超分处理
+      const upscaledImageUrl = await callReplicateUpscale(imageBase64, scale, model, face_enhance);
       
       const processingTime = Date.now() - startTime;
       const successResponse = {
         success: true,
-        message: '图像超分处理完成（模拟）',
-        upscaled_image: mockUpscaledImage,
+        message: '图像超分处理完成',
+        upscaled_image: upscaledImageUrl,
         scale: scale,
         face_enhance: face_enhance,
         model: model,
         timestamp: new Date().toISOString(),
-        processing_time_ms: processingTime,
-        note: '这是本地开发服务器的模拟响应，返回原图作为超分结果'
+        processing_time_ms: processingTime
       };
       
-      logger.logResponse('/api/upscale', 200, {
-        ...successResponse,
-        upscaled_image: '[BASE64_DATA]' // 不记录完整的base64数据
-      });
+      logger.logResponse('/api/upscale', 200, successResponse);
       
       res.status(200).json(successResponse);
 
