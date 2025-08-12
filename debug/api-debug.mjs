@@ -3,8 +3,8 @@
  * 用于本地仿真和Vercel环境的一致性调试
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 // 调试配置
 const DEBUG_CONFIG = {
@@ -185,7 +185,7 @@ function createDebugMiddleware(endpoint) {
   };
 }
 
-module.exports = {
+export {
   APIDebugger,
   ResponseWrapper,
   createDebugMiddleware,

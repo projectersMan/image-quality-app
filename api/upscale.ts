@@ -11,7 +11,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Replicate from 'replicate';
-const { createDebugMiddleware } = require('../debug/api-debug.js');
+import { createDebugMiddleware } from '../debug/api-debug.mjs';
 
 // 初始化Replicate客户端
 // 文档: https://replicate.com/docs/reference/node
