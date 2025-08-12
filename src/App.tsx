@@ -19,6 +19,7 @@ function App() {
   const [upscaledImage, setUpscaledImage] = useState<string | null>(null);
   const [isUpscaling, setIsUpscaling] = useState(false);
   const [upscaleScale, setUpscaleScale] = useState<number>(2);
+  const [upscaleModel, setUpscaleModel] = useState('real-esrgan');
 
   // 处理文件选择
   const handleFileSelect = useCallback((selectedFile: File) => {
@@ -161,7 +162,8 @@ function App() {
           body: JSON.stringify({
             imageBase64,
             scale: upscaleScale,
-            face_enhance: true
+            face_enhance: true,
+            model: upscaleModel
           }),
         });
 
@@ -278,6 +280,17 @@ function App() {
 
               <div className="upscale-section">
                 <div className="upscale-controls">
+                  <label htmlFor="model-select">超分模型:</label>
+                  <select
+                    id="model-select"
+                    value={upscaleModel}
+                    onChange={(e) => setUpscaleModel(e.target.value)}
+                    disabled={isUpscaling}
+                  >
+                    <option value="real-esrgan">Real-ESRGAN (通用)</option>
+                    <option value="aura-sr-v2">Aura SR v2 (高质量)</option>
+                  </select>
+                  
                   <label htmlFor="scale-select">放大倍数:</label>
                   <select
                     id="scale-select"

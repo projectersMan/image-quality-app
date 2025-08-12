@@ -181,8 +181,10 @@ body {
 .upscale-controls {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
   margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .upscale-controls label {

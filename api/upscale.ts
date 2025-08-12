@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { imageBase64, scale = 2, face_enhance = false } = req.body;
+    const { imageBase64, scale = 2, face_enhance = false, model = 'real-esrgan' } = req.body;
 
     if (!imageBase64) {
       return res.status(400).json({ error: '请提供图像数据' });
@@ -44,29 +44,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Replicate API Token未配置' });
     }
 
-    console.log('开始图像超分处理...');
+    console.log(`开始图像超分处理，使用模型: ${model}`);
 
-    // 调用Real-ESRGAN模型进行超分
-    // 模型文档: https://replicate.com/nightmareai/real-esrgan
-    const output = await replicate.run(
-      "nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa",
-      {
-        input: {
-          image: imageBase64,
-          scale: scale, // 放大倍数: 2, 4, 8
-          face_enhance: face_enhance, // 是否启用面部增强
+    let output;
+    
+    if (model === 'aura-sr-v2') {
+      // 使用Aura SR v2模型
+      // 模型文档: https://replicate.com/zsxkib/aura-sr-v2
+      output = await replicate.run(
+        "zsxkib/aura-sr-v2:5c137257cce8d5ce16e8a334b70e9e025106b5580affed0bc7d48940b594e74c",
+        {
+          input: {
+            image: imageBase64,
+            upscale_factor: scale, // Aura SR使用upscale_factor参数
+          }
         }
-      }
-    );
+      );
+    } else {
+      // 使用Real-ESRGAN模型（默认）
+      // 模型文档: https://replicate.com/nightmareai/real-esrgan
+      output = await replicate.run(
+        "nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa",
+        {
+          input: {
+            image: imageBase64,
+            scale: scale, // 放大倍数: 2, 4, 8
+            face_enhance: face_enhance, // 是否启用面部增强
+          }
+        }
+      );
+    }
 
     console.log('超分处理完成');
 
+    // 确保输出是字符串格式（解决JSON解析错误）
+    const upscaledImageUrl = typeof output === 'string' ? output : (Array.isArray(output) ? output[0] : String(output));
+    
     // 返回处理结果
     res.status(200).json({
       success: true,
-      upscaled_image: output,
+      upscaled_image: upscaledImageUrl,
       scale: scale,
       face_enhance: face_enhance,
+      model: model,
       message: '图像超分处理完成',
       timestamp: new Date().toISOString()
     });
