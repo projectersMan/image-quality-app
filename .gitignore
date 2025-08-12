@@ -28,6 +28,12 @@ dist-ssr
 .env.local
 .env.development.local
 .env.test.local
+
+# API Keys and Sensitive Configuration
+config/apikeys.json
+config/secrets.json
+*.key
+*.pem
 .env.production.local
 
 # API Keys and Secrets - 🚨 CRITICAL: Never commit these

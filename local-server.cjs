@@ -6,6 +6,19 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+
+// 加载环境变量
+const envPath = path.join(__dirname, '.env.local');
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  envContent.split('\n').forEach(line => {
+    const [key, value] = line.split('=');
+    if (key && value && !key.startsWith('#')) {
+      process.env[key.trim()] = value.trim();
+    }
+  });
+}
 
 // 检查是否安装了必要的依赖
 try {
