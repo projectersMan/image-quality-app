@@ -69,10 +69,10 @@ function createUpscaleHandler() {
         });
       }
 
-      const { image, model = 'real-esrgan', scale = 2, face_enhance = false } = req.body;
+      const { imageBase64, model = 'real-esrgan', scale = 2, face_enhance = false } = req.body;
 
       // 验证必需参数
-      if (!image) {
+      if (!imageBase64) {
         return res.status(400).json({
           success: false,
           error: '缺少图像数据',
