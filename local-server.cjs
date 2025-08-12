@@ -179,28 +179,25 @@ async function callReplicateUpscale(imageBase64, scale, model, face_enhance) {
     throw error;
   }
   
-  let modelConfig;
+  let modelId;
+  let modelInput;
   
   if (model === 'aura-sr-v2') {
-    modelConfig = {
-      id: "zsxkib/aura-sr-v2:5c137257cce8d5ce16e8a334b70e9e025106b5580affed0bc7d48940b594e74c",
-      input: {
-        image: imageBase64,
-        upscale_factor: scale,
-      }
+    modelId = "zsxkib/aura-sr-v2:5c137257cce8d5ce16e8a334b70e9e025106b5580affed0bc7d48940b594e74c";
+    modelInput = {
+      image: imageBase64,
+      upscale_factor: scale,
     };
   } else {
-    modelConfig = {
-      id: "nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa",
-      input: {
-        image: imageBase64,
-        scale: scale,
-        face_enhance: face_enhance,
-      }
+    modelId = "nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa";
+    modelInput = {
+      image: imageBase64,
+      scale: scale,
+      face_enhance: face_enhance,
     };
   }
   
-  const output = await replicate.run(modelConfig.id, { input: modelConfig.input });
+  const output = await replicate.run(modelId, { input: modelInput });
   return typeof output === 'string' ? output : (Array.isArray(output) ? output[0] : String(output));
 }
 
