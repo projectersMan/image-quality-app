@@ -8,6 +8,85 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
+// 简单的日志记录器
+class LocalLogger {
+  constructor() {
+    this.logDir = path.join(__dirname, 'logs');
+    this.ensureLogDir();
+  }
+
+  ensureLogDir() {
+    try {
+      if (!fs.existsSync(this.logDir)) {
+        fs.mkdirSync(this.logDir, { recursive: true });
+      }
+    } catch (error) {
+      console.warn('无法创建日志目录:', error.message);
+    }
+  }
+
+  log(level, endpoint, message, data = null) {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+      timestamp,
+      level,
+      endpoint,
+      message,
+      data,
+      environment: 'local-development'
+    };
+
+    // 控制台输出
+    console.log(`[${timestamp}] ${level.toUpperCase()} ${endpoint}: ${message}`);
+    if (data) {
+      console.log('Data:', JSON.stringify(data, null, 2));
+    }
+
+    // 文件日志
+    try {
+      const logFile = path.join(this.logDir, `api-${new Date().toISOString().split('T')[0]}.log`);
+      fs.appendFileSync(logFile, JSON.stringify(logEntry) + '\n');
+    } catch (error) {
+      console.warn('写入日志文件失败:', error.message);
+    }
+  }
+
+  logRequest(endpoint, req) {
+    this.log('info', endpoint, 'Request received', {
+      method: req.method,
+      headers: this.sanitizeHeaders(req.headers),
+      bodySize: req.body ? JSON.stringify(req.body).length : 0,
+      userAgent: req.headers['user-agent']
+    });
+  }
+
+  logResponse(endpoint, statusCode, data) {
+    this.log('info', endpoint, 'Response sent', {
+      statusCode,
+      dataSize: JSON.stringify(data).length,
+      success: statusCode < 400
+    });
+  }
+
+  logError(endpoint, error, context = {}) {
+    this.log('error', endpoint, 'Error occurred', {
+      message: error.message,
+      stack: error.stack,
+      context
+    });
+  }
+
+  sanitizeHeaders(headers) {
+    const sanitized = { ...headers };
+    // 移除敏感信息
+    delete sanitized.authorization;
+    delete sanitized.cookie;
+    return sanitized;
+  }
+}
+
+const logger = new LocalLogger();
+
 // 加载环境变量
 const envPath = path.join(__dirname, '.env.local');
 if (fs.existsSync(envPath)) {
@@ -72,74 +151,109 @@ process.env.VERCEL = false;
 // 创建模拟的upscale处理函数
 function createUpscaleHandler() {
   return (req, res) => {
+    const startTime = Date.now();
+    logger.logRequest('/api/upscale', req);
+    
     try {
       // 验证请求体
       if (!req.body) {
-        return res.status(400).json({
+        const errorResponse = {
           success: false,
           error: '请求体为空',
           message: '请提供有效的JSON数据'
-        });
+        };
+        logger.logResponse('/api/upscale', 400, errorResponse);
+        return res.status(400).json(errorResponse);
       }
 
       const { imageBase64, model = 'real-esrgan', scale = 2, face_enhance = false } = req.body;
 
       // 验证必需参数
       if (!imageBase64) {
-        return res.status(400).json({
+        const errorResponse = {
           success: false,
           error: '缺少图像数据',
           message: '请提供base64编码的图像数据'
-        });
+        };
+        logger.logResponse('/api/upscale', 400, errorResponse);
+        return res.status(400).json(errorResponse);
       }
 
       // 验证模型参数
       if (!['real-esrgan', 'aura-sr-v2'].includes(model)) {
-        return res.status(400).json({
+        const errorResponse = {
           success: false,
           error: '不支持的模型类型',
           message: '仅支持 real-esrgan 和 aura-sr-v2 模型'
-        });
+        };
+        logger.logResponse('/api/upscale', 400, errorResponse);
+        return res.status(400).json(errorResponse);
       }
 
       // 验证缩放参数
       if (![2, 4, 8].includes(scale)) {
-        return res.status(400).json({
+        const errorResponse = {
           success: false,
           error: '不支持的缩放倍数',
           message: '仅支持2x、4x、8x缩放'
-        });
+        };
+        logger.logResponse('/api/upscale', 400, errorResponse);
+        return res.status(400).json(errorResponse);
       }
 
       // 检查Replicate API Token
       if (!process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_TOKEN === 'r8_your_actual_token_here') {
-        return res.status(500).json({
+        const errorResponse = {
           success: false,
           error: 'Replicate API Token未配置',
           message: '请在.env.local文件中配置真实的REPLICATE_API_TOKEN',
           suggestion: '获取Token地址: https://replicate.com/account/api-tokens'
-        });
+        };
+        logger.logResponse('/api/upscale', 500, errorResponse);
+        return res.status(500).json(errorResponse);
       }
 
       // 模拟成功响应（实际环境中会调用Replicate API）
-      res.status(200).json({
+      logger.log('info', '/api/upscale', 'Processing upscale request', {
+        model,
+        scale,
+        face_enhance,
+        imageSize: imageBase64.length
+      });
+      
+      // 生成一个简单的模拟超分图片（原图的副本，实际应用中会调用真实API）
+      const mockUpscaledImage = imageBase64; // 在本地仿真中，直接返回原图作为超分结果
+      
+      const processingTime = Date.now() - startTime;
+      const successResponse = {
         success: true,
         message: '图像超分处理完成（模拟）',
-        upscaled_image: 'https://example.com/upscaled-image.jpg',
+        upscaled_image: mockUpscaledImage,
         scale: scale,
         face_enhance: face_enhance,
         model: model,
         timestamp: new Date().toISOString(),
-        note: '这是本地开发服务器的模拟响应'
+        processing_time_ms: processingTime,
+        note: '这是本地开发服务器的模拟响应，返回原图作为超分结果'
+      };
+      
+      logger.logResponse('/api/upscale', 200, {
+        ...successResponse,
+        upscaled_image: '[BASE64_DATA]' // 不记录完整的base64数据
       });
+      
+      res.status(200).json(successResponse);
 
     } catch (error) {
-      console.error('处理请求时出错:', error);
-      res.status(500).json({
+      logger.logError('/api/upscale', error, { startTime });
+      const errorResponse = {
         success: false,
         error: '服务器内部错误',
-        message: error.message
-      });
+        message: error.message,
+        timestamp: new Date().toISOString()
+      };
+      logger.logResponse('/api/upscale', 500, errorResponse);
+      res.status(500).json(errorResponse);
     }
   };
 }
@@ -184,40 +298,63 @@ app.post('/api/upscale', async (req, res) => {
 
 // AI分析接口
 app.post('/api/analyze', async (req, res) => {
+  const startTime = Date.now();
+  logger.logRequest('/api/analyze', req);
+  
   try {
     const { imageUrl, imageBase64 } = req.body;
 
     if (!imageUrl && !imageBase64) {
-      return res.status(400).json({ 
-        error: '请提供图片URL或base64数据' 
-      });
+      const errorResponse = {
+        error: '请提供图片URL或base64数据',
+        timestamp: new Date().toISOString()
+      };
+      logger.logResponse('/api/analyze', 400, errorResponse);
+      return res.status(400).json(errorResponse);
     }
 
     // 检查Replicate API token
     if (!process.env.REPLICATE_API_TOKEN) {
-      return res.status(500).json({ 
+      const errorResponse = {
         error: 'Replicate API Token未配置',
         message: '请在.env.local文件中配置真实的REPLICATE_API_TOKEN',
-        suggestion: '获取Token地址: https://replicate.com/account/api-tokens'
-      });
+        suggestion: '获取Token地址: https://replicate.com/account/api-tokens',
+        timestamp: new Date().toISOString()
+      };
+      logger.logResponse('/api/analyze', 500, errorResponse);
+      return res.status(500).json(errorResponse);
     }
+
+    logger.log('info', '/api/analyze', 'Processing analyze request', {
+      hasImageUrl: !!imageUrl,
+      hasImageBase64: !!imageBase64,
+      imageSize: imageBase64 ? imageBase64.length : 0
+    });
 
     // 模拟AI分析结果（实际环境中会调用Replicate API）
     const mockScore = Math.random() * 4 + 6; // 6-10之间的随机分数
+    const processingTime = Date.now() - startTime;
     
-    res.status(200).json({
+    const successResponse = {
       score: Math.round(mockScore * 10) / 10, // 保留一位小数
       message: '分析完成（模拟）',
       timestamp: new Date().toISOString(),
+      processing_time_ms: processingTime,
       note: '这是本地开发服务器的模拟响应'
-    });
+    };
+    
+    logger.logResponse('/api/analyze', 200, successResponse);
+    res.status(200).json(successResponse);
 
   } catch (error) {
-    console.error('AI分析错误:', error);
-    res.status(500).json({
+    logger.logError('/api/analyze', error, { startTime });
+    const errorResponse = {
       error: '图像分析服务暂时不可用，请稍后再试',
-      details: error.message
-    });
+      details: error.message,
+      timestamp: new Date().toISOString()
+    };
+    logger.logResponse('/api/analyze', 500, errorResponse);
+    res.status(500).json(errorResponse);
   }
 });
 

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from '@clerk/clerk-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { clsx } from 'clsx';
+import ProgressBar from './components/ProgressBar';
 
 // 初始化Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
@@ -14,12 +15,14 @@ function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [analyzeProgress, setAnalyzeProgress] = useState(0);
 
   // 超分功能状态
   const [upscaledImage, setUpscaledImage] = useState<string | null>(null);
   const [isUpscaling, setIsUpscaling] = useState(false);
   const [upscaleScale, setUpscaleScale] = useState<number>(2);
   const [upscaleModel, setUpscaleModel] = useState('real-esrgan');
+  const [upscaleProgress, setUpscaleProgress] = useState(0);
 
   // 处理文件选择
   const handleFileSelect = useCallback((selectedFile: File) => {
@@ -75,8 +78,10 @@ function App() {
 
     setIsAnalyzing(true);
     setError(null);
+    setAnalyzeProgress(0);
 
     try {
+      setAnalyzeProgress(20);
       // 将文件转换为base64
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -84,7 +89,9 @@ function App() {
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
+      setAnalyzeProgress(40);
 
+      setAnalyzeProgress(60);
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
@@ -94,6 +101,7 @@ function App() {
           imageBase64: base64,
         }),
       });
+      setAnalyzeProgress(80);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -101,6 +109,7 @@ function App() {
       }
 
       const result = await response.json();
+      setAnalyzeProgress(100);
       setScore(result.score);
     } catch (err) {
       setError(err instanceof Error ? err.message : '分析过程中出现错误');
@@ -147,13 +156,17 @@ function App() {
 
     setIsUpscaling(true);
     setError(null);
+    setUpscaleProgress(0);
 
     try {
+      setUpscaleProgress(20);
       // 将文件转换为base64
       const reader = new FileReader();
       reader.onload = async (e) => {
         const imageBase64 = e.target?.result as string;
+        setUpscaleProgress(40);
 
+        setUpscaleProgress(60);
         const response = await fetch('/api/upscale', {
           method: 'POST',
           headers: {
@@ -166,8 +179,10 @@ function App() {
             model: upscaleModel
           }),
         });
+        setUpscaleProgress(80);
 
         const data = await response.json();
+        setUpscaleProgress(100);
 
         if (response.ok) {
           setUpscaledImage(data.upscaled_image);
@@ -277,6 +292,14 @@ function App() {
                   '🤖 开始AI分析'
                 )}
               </button>
+              {isAnalyzing && (
+                 <ProgressBar 
+                   isVisible={isAnalyzing} 
+                   progress={analyzeProgress} 
+                   message="AI分析进度" 
+                   type="analyze" 
+                 />
+               )}
 
               <div className="upscale-section">
                 <div className="upscale-controls">
@@ -318,6 +341,14 @@ function App() {
                     '🚀 AI超分辨率'
                   )}
                 </button>
+                {isUpscaling && (
+                   <ProgressBar 
+                     isVisible={isUpscaling} 
+                     progress={upscaleProgress} 
+                     message="超分处理进度" 
+                     type="upscale" 
+                   />
+                 )}
               </div>
             </div>
           )}
