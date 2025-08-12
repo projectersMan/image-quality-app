@@ -85,39 +85,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     debug.apiDebugger.log('info', `开始图像超分处理，使用模型: ${model}`);
 
     let output;
-    let modelConfig;
+    let modelId;
+    let modelInput;
     
     try {
       if (model === 'aura-sr-v2') {
         // 使用Aura SR v2模型
-        modelConfig = {
-          id: "zsxkib/aura-sr-v2:5c137257cce8d5ce16e8a334b70e9e025106b5580affed0bc7d48940b594e74c",
-          input: {
-            image: imageBase64,
-            upscale_factor: scale, // Aura SR使用upscale_factor参数
-          }
+        modelId = "zsxkib/aura-sr-v2:5c137257cce8d5ce16e8a334b70e9e025106b5580affed0bc7d48940b594e74c";
+        modelInput = {
+          image: imageBase64,
+          upscale_factor: scale, // Aura SR使用upscale_factor参数
         };
       } else {
         // 使用Real-ESRGAN模型（默认）
-        modelConfig = {
-          id: "nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa",
-          input: {
-            image: imageBase64,
-            scale: scale, // 放大倍数: 2, 4, 8
-            face_enhance: face_enhance, // 是否启用面部增强
-          }
+        modelId = "nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa";
+        modelInput = {
+          image: imageBase64,
+          scale: scale, // 放大倍数: 2, 4, 8
+          face_enhance: face_enhance, // 是否启用面部增强
         };
       }
 
       debug.apiDebugger.log('debug', 'Replicate API调用配置');
       
       // 调用Replicate API
-      output = await replicate.run(modelConfig.id, modelConfig);
+      output = await replicate.run(modelId, { input: modelInput });
       
       debug.apiDebugger.log('info', '超分处理完成');
       
     } catch (replicateError) {
-      debug.logError(replicateError, { model, scale, modelConfig });
+      debug.logError(replicateError, { model, scale, modelId, modelInput });
       throw replicateError;
     }
 
