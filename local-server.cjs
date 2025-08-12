@@ -154,8 +154,31 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
+// 简单的图像尺寸验证（基于base64数据大小的启发式方法）
+function validateImageForModel(imageBase64, model) {
+  if (model === 'aura-sr-v2') {
+    // 对于aura-sr-v2模型，检查base64数据大小
+    // 一个1x1像素的PNG大小约为100字节的base64
+    // 只拒绝明显太小的图像（如1x1像素）
+    const base64Data = imageBase64.split(',')[1] || imageBase64;
+    const sizeInBytes = (base64Data.length * 3) / 4; // 估算原始字节大小
+    
+    if (sizeInBytes < 150) { // 小于150字节可能是1x1像素的图像
+      throw new Error('Aura SR v2 模型要求图像尺寸至少为 64x64 像素。请使用更大的图像。');
+    }
+  }
+  return true;
+}
+
 // Replicate API调用函数
 async function callReplicateUpscale(imageBase64, scale, model, face_enhance) {
+  // 验证图像是否适合指定模型
+  try {
+    validateImageForModel(imageBase64, model);
+  } catch (error) {
+    throw error;
+  }
+  
   let modelConfig;
   
   if (model === 'aura-sr-v2') {
