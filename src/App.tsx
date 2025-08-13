@@ -27,15 +27,15 @@ function App() {
   // 影调增强功能状态
   const [toneEnhancedImage, setToneEnhancedImage] = useState<string | null>(null);
   const [isToneEnhancing, setIsToneEnhancing] = useState(false);
-  const [toneEnhanceType, setToneEnhanceType] = useState('auto');
+  const [toneEnhanceType, setToneEnhanceType] = useState('general');
   const [toneIntensity, setToneIntensity] = useState<number>(1.0);
   const [toneEnhanceProgress, setToneEnhanceProgress] = useState(0);
 
   // 细节增强功能状态
   const [detailEnhancedImage, setDetailEnhancedImage] = useState<string | null>(null);
   const [isDetailEnhancing, setIsDetailEnhancing] = useState(false);
-  const [detailEnhanceType, setDetailEnhanceType] = useState('denoise');
-  const [detailStrength, setDetailStrength] = useState<number>(15);
+  const [detailEnhanceType, setDetailEnhanceType] = useState('general');
+  const [detailStrength, setDetailStrength] = useState<number>(2);
   const [detailEnhanceProgress, setDetailEnhanceProgress] = useState(0);
 
   // 处理文件选择
@@ -477,11 +477,10 @@ function App() {
                     onChange={(e) => setToneEnhanceType(e.target.value)}
                     disabled={isToneEnhancing}
                   >
-                    <option value="auto">自动增强</option>
-                    <option value="brightness">亮度调整</option>
-                    <option value="contrast">对比度调整</option>
-                    <option value="saturation">饱和度调整</option>
-                    <option value="color_balance">色彩平衡</option>
+                    <option value="general">通用增强</option>
+                    <option value="night">夜景增强</option>
+                    <option value="landscape">风景增强</option>
+                    <option value="hdr">高动态增强</option>
                   </select>
 
                   <label htmlFor="tone-intensity-select">增强强度:</label>
@@ -532,10 +531,10 @@ function App() {
                     onChange={(e) => setDetailEnhanceType(e.target.value)}
                     disabled={isDetailEnhancing}
                   >
-                    <option value="denoise">图像去噪</option>
-                    <option value="sharpen">图像锐化</option>
-                    <option value="artifact_reduction">压缩伪影减少</option>
-                    <option value="super_resolution">超分辨率</option>
+                    <option value="general">通用细节</option>
+                    <option value="hair">发丝细节</option>
+                    <option value="plant">植物细节</option>
+                    <option value="text">文字清晰</option>
                   </select>
 
                   <label htmlFor="detail-strength-select">增强强度:</label>
@@ -545,26 +544,9 @@ function App() {
                     onChange={(e) => setDetailStrength(Number(e.target.value))}
                     disabled={isDetailEnhancing}
                   >
-                    {detailEnhanceType === 'denoise' ? (
-                      <>
-                        <option value={15}>轻微 (15)</option>
-                        <option value={25}>中等 (25)</option>
-                        <option value={50}>强烈 (50)</option>
-                      </>
-                    ) : detailEnhanceType === 'artifact_reduction' ? (
-                      <>
-                        <option value={10}>轻微 (10)</option>
-                        <option value={20}>中等 (20)</option>
-                        <option value={30}>增强 (30)</option>
-                        <option value={40}>强烈 (40)</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value={15}>标准</option>
-                        <option value={25}>增强</option>
-                        <option value={50}>强烈</option>
-                      </>
-                    )}
+                    <option value={1}>轻微</option>
+                    <option value={2}>标准</option>
+                    <option value={3}>强烈</option>
                   </select>
                 </div>
 

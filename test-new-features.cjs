@@ -56,18 +56,30 @@ async function runTests() {
     return;
   }
 
-  // 测试影调增强
+  // 测试影调增强 - 新的选项
   await testAPI('/api/tone-enhance', {
     imageBase64: testImageBase64,
-    enhanceType: 'auto',
+    enhanceType: 'general',
     intensity: 1.0
   });
 
-  // 测试细节增强
+  await testAPI('/api/tone-enhance', {
+    imageBase64: testImageBase64,
+    enhanceType: 'night',
+    intensity: 1.5
+  });
+
+  // 测试细节增强 - 新的选项
   await testAPI('/api/detail-enhance', {
     imageBase64: testImageBase64,
-    enhanceType: 'denoise',
-    strength: 15
+    enhanceType: 'general',
+    strength: 2
+  });
+
+  await testAPI('/api/detail-enhance', {
+    imageBase64: testImageBase64,
+    enhanceType: 'hair',
+    strength: 3
   });
 
   console.log('\n🎉 测试完成！');

@@ -297,12 +297,12 @@ export function formatSuccessResponse(data) {
 /**
  * 处理影调增强请求 - 统一接口
  * @param {string} imageBase64 - Base64编码的图像数据
- * @param {string} enhanceType - 增强类型 ('auto', 'brightness', 'contrast', 'saturation', 'color_balance')
+ * @param {string} enhanceType - 增强类型 ('general', 'night', 'landscape', 'hdr')
  * @param {number} intensity - 增强强度 (0.1-2.0)
  * @param {string} apiToken - API Token
  * @returns {Promise<Object>} 处理结果
  */
-export async function processToneEnhance(imageBase64, enhanceType = 'auto', intensity = 1.0, apiToken) {
+export async function processToneEnhance(imageBase64, enhanceType = 'general', intensity = 1.0, apiToken) {
   const startTime = Date.now();
 
   try {
@@ -310,7 +310,7 @@ export async function processToneEnhance(imageBase64, enhanceType = 'auto', inte
     validateImageData(imageBase64);
 
     // 验证增强类型
-    const validTypes = ['auto', 'brightness', 'contrast', 'saturation', 'color_balance'];
+    const validTypes = ['general', 'night', 'landscape', 'hdr'];
     if (!validTypes.includes(enhanceType)) {
       throw new Error(`不支持的增强类型: ${enhanceType}。支持的类型: ${validTypes.join(', ')}`);
     }
@@ -327,29 +327,26 @@ export async function processToneEnhance(imageBase64, enhanceType = 'auto', inte
 
     let output;
 
-    // 使用SwinIR进行影调增强
-    // 根据增强类型选择不同的任务类型
-    const modelName = 'jingyunliang/swinir:660d922d33153019e8c263a3bba265de882e7f4f70396546b6c9c8f9d47a021a';
+    // 使用Google Research MAXIM模型进行影调增强
+    const modelName = 'google-research/maxim:494ca4d578293b4b93945115601b6a38190519da18467556ca223d219c3af9f9';
 
-    let taskType;
+    let modelType;
     switch (enhanceType) {
-      case 'auto':
-      case 'color_balance':
-        taskType = 'Color Image Denoising';
+      case 'night':
+        modelType = 'Image Enhancement (Low-light)';
         break;
-      case 'brightness':
-      case 'contrast':
-      case 'saturation':
-        taskType = 'Real-World Image Super-Resolution-Medium';
+      case 'landscape':
+      case 'hdr':
+        modelType = 'Image Enhancement (Retouching)';
         break;
+      case 'general':
       default:
-        taskType = 'Color Image Denoising';
+        modelType = 'Image Enhancement (Retouching)';
     }
 
     const input = {
       image: imageBase64,
-      task_type: taskType,
-      noise: Math.round(15 * intensity) // 根据强度调整噪声级别
+      model: modelType
     };
 
     output = await replicate.run(modelName, { input });
@@ -402,12 +399,12 @@ export async function processToneEnhance(imageBase64, enhanceType = 'auto', inte
 /**
  * 处理细节增强请求 - 统一接口
  * @param {string} imageBase64 - Base64编码的图像数据
- * @param {string} enhanceType - 增强类型 ('denoise', 'sharpen', 'artifact_reduction', 'super_resolution')
- * @param {number} strength - 增强强度 (15, 25, 50 for denoise; 2, 4 for super_resolution)
+ * @param {string} enhanceType - 增强类型 ('hair', 'plant', 'text', 'general')
+ * @param {number} strength - 增强强度 (1-3)
  * @param {string} apiToken - API Token
  * @returns {Promise<Object>} 处理结果
  */
-export async function processDetailEnhance(imageBase64, enhanceType = 'denoise', strength = 15, apiToken) {
+export async function processDetailEnhance(imageBase64, enhanceType = 'general', strength = 2, apiToken) {
   const startTime = Date.now();
 
   try {
@@ -415,9 +412,14 @@ export async function processDetailEnhance(imageBase64, enhanceType = 'denoise',
     validateImageData(imageBase64);
 
     // 验证增强类型
-    const validTypes = ['denoise', 'sharpen', 'artifact_reduction', 'super_resolution'];
+    const validTypes = ['hair', 'plant', 'text', 'general'];
     if (!validTypes.includes(enhanceType)) {
       throw new Error(`不支持的增强类型: ${enhanceType}。支持的类型: ${validTypes.join(', ')}`);
+    }
+
+    // 验证强度参数
+    if (strength < 1 || strength > 3) {
+      throw new Error('增强强度必须在1-3之间');
     }
 
     // 创建Replicate客户端
@@ -425,40 +427,30 @@ export async function processDetailEnhance(imageBase64, enhanceType = 'denoise',
 
     console.log(`🔍 开始细节增强处理，类型: ${enhanceType}, 强度: ${strength}`);
 
-    // 使用SwinIR模型进行细节增强
-    const modelName = 'jingyunliang/swinir:660d922d33153019e8c263a3bba265de882e7f4f70396546b6c9c8f9d47a021a';
+    // 使用Google Research MAXIM模型进行细节增强
+    const modelName = 'google-research/maxim:494ca4d578293b4b93945115601b6a38190519da18467556ca223d219c3af9f9';
 
-    let taskType, noiseLevel, jpegLevel;
-
+    let modelType;
     switch (enhanceType) {
-      case 'denoise':
-        taskType = 'Color Image Denoising';
-        noiseLevel = [15, 25, 50].includes(strength) ? strength : 15;
+      case 'hair':
+      case 'plant':
+        // 对于发丝和植物细节，使用去噪模型来增强细节
+        modelType = 'Image Denoising';
         break;
-      case 'sharpen':
-      case 'super_resolution':
-        taskType = 'Real-World Image Super-Resolution-Large';
-        noiseLevel = 15;
+      case 'text':
+        // 对于文字，使用去模糊模型来增强清晰度
+        modelType = 'Image Deblurring (RealBlur_R)';
         break;
-      case 'artifact_reduction':
-        taskType = 'JPEG Compression Artifact Reduction';
-        jpegLevel = [10, 20, 30, 40].includes(strength) ? strength : 40;
-        noiseLevel = 15;
-        break;
+      case 'general':
       default:
-        taskType = 'Color Image Denoising';
-        noiseLevel = 15;
+        // 通用细节增强使用去噪模型
+        modelType = 'Image Denoising';
     }
 
     const input = {
       image: imageBase64,
-      task_type: taskType,
-      noise: noiseLevel
+      model: modelType
     };
-
-    if (enhanceType === 'artifact_reduction') {
-      input.jpeg = jpegLevel;
-    }
 
     const output = await replicate.run(modelName, { input });
 
