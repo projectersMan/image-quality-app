@@ -90,33 +90,58 @@ function buildModelConfig(model, imageBase64, scale, face_enhance = false) {
 }
 
 /**
- * 执行图像超分处理
- * @param {Object} replicate - Replicate客户端
+ * 执行图像超分处理 - 统一接口
  * @param {string} imageBase64 - Base64编码的图像数据
- * @param {string} model - 模型名称
  * @param {number} scale - 缩放倍数
  * @param {boolean} face_enhance - 是否启用面部增强
- * @returns {Promise<string>} 处理后的图像URL
+ * @param {string} model - 模型名称
+ * @param {string} apiToken - API Token
+ * @returns {Promise<Object>} 处理结果
  */
-async function processUpscale(replicate, imageBase64, model = 'real-esrgan', scale = 2, face_enhance = false) {
-  // 验证输入参数
-  validateImageData(imageBase64);
-  validateUpscaleParams(model, scale);
-  
-  // 构建模型配置
-  const { modelId, modelInput } = buildModelConfig(model, imageBase64, scale, face_enhance);
-  
+async function processUpscale(imageBase64, scale = 2, face_enhance = false, model = 'real-esrgan', apiToken) {
+  const startTime = Date.now();
+
   try {
+    // 验证输入参数
+    validateImageData(imageBase64);
+    validateUpscaleParams(model, scale);
+
+    // 创建Replicate客户端
+    const replicate = createReplicateClient(apiToken);
+
+    // 构建模型配置
+    const { modelId, modelInput } = buildModelConfig(model, imageBase64, scale, face_enhance);
+
     // 调用Replicate API
+    console.log(`🚀 开始处理图像超分，模型: ${model}, 缩放倍数: ${scale}x`);
     const output = await replicate.run(modelId, { input: modelInput });
-    
+
     if (!output || (Array.isArray(output) && output.length === 0)) {
       throw new Error('超分处理失败：模型返回空结果');
     }
-    
-    // 返回结果URL（通常是数组的第一个元素）
-    return Array.isArray(output) ? output[0] : output;
+
+    // 处理输出结果
+    const upscaledImageUrl = Array.isArray(output) ? output[0] : output;
+
+    const processingTime = Date.now() - startTime;
+    console.log(`✅ 图像超分处理完成，耗时: ${processingTime}ms`);
+
+    return {
+      success: true,
+      upscaled_image: upscaledImageUrl,
+      scale: scale,
+      face_enhance: face_enhance,
+      model: model,
+      message: '图像超分处理完成',
+      timestamp: new Date().toISOString(),
+      processing_time_ms: processingTime,
+      environment: process.env.NODE_ENV || 'development'
+    };
+
   } catch (error) {
+    const processingTime = Date.now() - startTime;
+    console.error('❌ 图像超分处理失败:', error.message);
+
     // 统一错误处理
     if (error.message?.includes('insufficient_quota')) {
       throw new Error('API配额不足，请检查Replicate账户余额');
@@ -194,23 +219,30 @@ function calculateBasicScore(imageInfo) {
 }
 
 /**
- * 执行图像质量分析
- * @param {Object} replicate - Replicate客户端
+ * 执行图像质量分析 - 统一接口
  * @param {string} imageBase64 - Base64编码的图像数据
+ * @param {string} apiToken - API Token (暂时未使用)
  * @returns {Promise<Object>} 分析结果
  */
-async function processAnalyze(replicate, imageBase64) {
-  // 验证输入参数
-  validateImageData(imageBase64);
-  
+async function processAnalyze(imageBase64, apiToken) {
+  const startTime = Date.now();
+
   try {
+    // 验证输入参数
+    validateImageData(imageBase64);
+
+    console.log('🔍 开始图像质量分析（基础模式）');
+
     // 暂时使用基础的图像分析，避免复杂模型的兼容性问题
     // 基于图像大小和格式进行简单评估
     const imageInfo = analyzeImageBasic(imageBase64);
-    
+
     // 生成基于图像属性的评分
     let score = calculateBasicScore(imageInfo);
-    
+
+    const processingTime = Date.now() - startTime;
+    console.log(`✅ 图像质量分析完成，评分: ${score}/10.0，耗时: ${processingTime}ms`);
+
     return {
       success: true,
       score: score,
@@ -223,17 +255,22 @@ async function processAnalyze(replicate, imageBase64) {
         }
       },
       message: '图像质量分析完成（基础模式）',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      processing_time_ms: processingTime,
+      environment: process.env.NODE_ENV || 'development'
     };
-    
+
   } catch (error) {
+    const processingTime = Date.now() - startTime;
+    console.error('❌ 图像质量分析失败:', error.message);
+
     // 统一错误处理
     if (error.message?.includes('rate_limit')) {
       throw new Error('请求频率过高，请稍后再试');
     } else if (error.message?.includes('authentication')) {
       throw new Error('API认证失败，请检查REPLICATE_API_TOKEN配置');
     } else {
-      throw new Error(`图像分析失败: ${error.message}`);
+      throw new Error(`图像质量分析失败: ${error.message}`);
     }
   }
 }

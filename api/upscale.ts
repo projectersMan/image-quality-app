@@ -61,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return debug.errorResponse(res, 'REPLICATE_API_TOKEN未配置', 500);
     }
     
-    // 使用共享的processUpscale函数
+    // 使用共享的processUpscale函数 - 统一参数顺序
     const result = await processUpscale(imageBase64, scale, face_enhance, model, process.env.REPLICATE_API_TOKEN);
     
     // 使用调试工具记录响应

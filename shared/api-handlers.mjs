@@ -74,7 +74,7 @@ export function buildModelConfig(imageBase64, scale = 2, faceEnhance = true) {
 }
 
 /**
- * 处理图像超分请求
+ * 处理图像超分请求 - 统一接口
  * @param {string} imageBase64 - Base64编码的图像数据
  * @param {number} scale - 缩放倍数
  * @param {boolean} faceEnhance - 是否启用面部增强
@@ -84,41 +84,55 @@ export function buildModelConfig(imageBase64, scale = 2, faceEnhance = true) {
  */
 export async function processUpscale(imageBase64, scale = 2, faceEnhance = true, model = 'real-esrgan', apiToken) {
   const startTime = Date.now();
-  
+
   try {
     // 验证输入参数
     validateImageData(imageBase64);
     validateUpscaleParams(model, scale);
-    
+
     // 创建Replicate客户端
     const replicate = createReplicateClient(apiToken);
-    
+
     // 构建模型配置
     const input = buildModelConfig(imageBase64, scale, faceEnhance);
-    
-    // 选择模型
+
+    // 选择模型 - 使用正确的模型ID
     let modelName;
     switch (model) {
       case 'real-esrgan':
-        modelName = 'nightmareai/real-esrgan:42fed1c4974146d4d2414e2be2c5277c7fcf05fcc972b6f011e9774624d7c5';
+        modelName = 'nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa';
         break;
       case 'aura-sr-v2':
-        modelName = 'fal-ai/aura-sr:b6c96d6b-5c8c-4c8a-8b8a-8b8a8b8a8b8a';
+        modelName = 'zsxkib/aura-sr-v2:5c137257cce8d5ce16e8a334b70e9e025106b5580affed0bc7d48940b594e74c';
         break;
       default:
         throw new Error(`不支持的模型: ${model}`);
     }
-    
+
     // 调用Replicate API
     console.log(`🚀 开始处理图像超分，模型: ${model}, 缩放倍数: ${scale}x`);
     const output = await replicate.run(modelName, { input });
-    
+
+    // 处理输出结果
+    let upscaledImageUrl;
+    if (Array.isArray(output)) {
+      upscaledImageUrl = output[0];
+    } else if (typeof output === 'string') {
+      upscaledImageUrl = output;
+    } else {
+      throw new Error('模型返回了无效的输出格式');
+    }
+
+    if (!upscaledImageUrl) {
+      throw new Error('模型返回了空结果');
+    }
+
     const processingTime = Date.now() - startTime;
     console.log(`✅ 图像超分处理完成，耗时: ${processingTime}ms`);
-    
+
     return {
       success: true,
-      upscaled_image: output,
+      upscaled_image: upscaledImageUrl,
       scale: scale,
       face_enhance: faceEnhance,
       model: model,
@@ -127,12 +141,21 @@ export async function processUpscale(imageBase64, scale = 2, faceEnhance = true,
       processing_time_ms: processingTime,
       environment: process.env.NODE_ENV || 'development'
     };
-    
+
   } catch (error) {
     const processingTime = Date.now() - startTime;
     console.error('❌ 图像超分处理失败:', error.message);
-    
-    throw new Error(`图像超分处理失败: ${error.message}`);
+
+    // 统一错误处理
+    if (error.message?.includes('insufficient_quota')) {
+      throw new Error('API配额不足，请检查Replicate账户余额');
+    } else if (error.message?.includes('rate_limit')) {
+      throw new Error('请求频率过高，请稍后再试');
+    } else if (error.message?.includes('authentication')) {
+      throw new Error('API认证失败，请检查REPLICATE_API_TOKEN配置');
+    } else {
+      throw new Error(`图像超分处理失败: ${error.message}`);
+    }
   }
 }
 
@@ -199,27 +222,27 @@ function calculateBasicScore(analysis) {
 }
 
 /**
- * 处理图像质量分析请求
+ * 处理图像质量分析请求 - 统一接口
  * @param {string} imageBase64 - Base64编码的图像数据
  * @param {string} apiToken - API Token (暂时未使用)
  * @returns {Promise<Object>} 分析结果
  */
 export async function processAnalyze(imageBase64, apiToken) {
   const startTime = Date.now();
-  
+
   try {
     // 验证输入参数
     validateImageData(imageBase64);
-    
+
     console.log('🔍 开始图像质量分析（基础模式）');
-    
+
     // 执行基础图像分析
     const analysis = analyzeImageBasic(imageBase64);
     const score = calculateBasicScore(analysis);
-    
+
     const processingTime = Date.now() - startTime;
     console.log(`✅ 图像质量分析完成，评分: ${score}/5.0，耗时: ${processingTime}ms`);
-    
+
     return {
       success: true,
       score: score,
@@ -229,12 +252,19 @@ export async function processAnalyze(imageBase64, apiToken) {
       processing_time_ms: processingTime,
       environment: process.env.NODE_ENV || 'development'
     };
-    
+
   } catch (error) {
     const processingTime = Date.now() - startTime;
     console.error('❌ 图像质量分析失败:', error.message);
-    
-    throw new Error(`图像质量分析失败: ${error.message}`);
+
+    // 统一错误处理
+    if (error.message?.includes('rate_limit')) {
+      throw new Error('请求频率过高，请稍后再试');
+    } else if (error.message?.includes('authentication')) {
+      throw new Error('API认证失败，请检查REPLICATE_API_TOKEN配置');
+    } else {
+      throw new Error(`图像质量分析失败: ${error.message}`);
+    }
   }
 }
 

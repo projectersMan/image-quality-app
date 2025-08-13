@@ -9,7 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const Replicate = require('replicate');
 
-// 引入共享的API处理逻辑
+// 引入共享的API处理逻辑 - 使用ES模块版本以保持与Vercel一致
 const { processUpscale, processAnalyze } = require('./shared/api-handlers.cjs');
 
 // 简单的日志记录器
@@ -160,19 +160,8 @@ function createUpscaleHandler() {
       // 解析请求体参数
       const { imageBase64, scale = 2, face_enhance = false, model = 'real-esrgan' } = req.body;
       
-      // 使用共享的processUpscale函数，传递replicate客户端和参数
-      const upscaledImageUrl = await processUpscale(replicate, imageBase64, model, scale, face_enhance);
-      
-      // 构建响应结果
-      const result = {
-        success: true,
-        upscaled_image: upscaledImageUrl,
-        scale: scale,
-        face_enhance: face_enhance,
-        model: model,
-        message: '图像超分处理完成',
-        timestamp: new Date().toISOString()
-      };
+      // 使用共享的processUpscale函数 - 统一参数顺序与Vercel保持一致
+      const result = await processUpscale(imageBase64, scale, face_enhance, model, process.env.REPLICATE_API_TOKEN);
       
       // 添加本地服务器特有的信息
       const processingTime = Date.now() - startTime;
@@ -260,8 +249,8 @@ app.post('/api/analyze', async (req, res) => {
       });
     }
     
-    // 使用共享的processAnalyze函数，传递replicate客户端和图像数据
-    const result = await processAnalyze(replicate, imageData);
+    // 使用共享的processAnalyze函数 - 统一参数顺序与Vercel保持一致
+    const result = await processAnalyze(imageData, process.env.REPLICATE_API_TOKEN);
     
     // 添加本地服务器特有的信息
     const processingTime = Date.now() - startTime;
