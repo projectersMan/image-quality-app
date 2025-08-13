@@ -2,15 +2,28 @@
 
 ## 问题描述
 
-在Vercel服务端操作时遇到错误：`Unexpected token 'A', "A server e"... is not valid JSON`
+在Vercel服务端操作时遇到以下错误：
+
+### 1. JSON解析错误
+`Unexpected token 'A', "A server e"... is not valid JSON`
+
+### 2. ES模块兼容性错误
+```
+ReferenceError: require is not defined in ES module scope, you can use import instead
+This file is being treated as an ES module because it has a '.js' file extension and '/var/task/package.json' contains "type": "module".
+```
 
 ## 问题原因
 
-这个错误通常表示API返回了HTML错误页面而不是JSON格式的响应。常见原因包括：
-
+### JSON解析错误原因：
 1. **API函数错误处理不当** - 直接使用`res.status().json()`可能在某些情况下返回HTML
 2. **Vercel部署配置问题** - 环境变量未正确设置
 3. **依赖项问题** - 某些模块在Vercel环境中不兼容
+
+### ES模块兼容性错误原因：
+1. **混用CommonJS和ES模块** - 在ES模块环境中使用`require()`语句
+2. **模块导入语法不匹配** - Vercel环境默认使用ES模块，但代码中使用CommonJS语法
+3. **依赖项导入方式错误** - 共享模块使用了不兼容的导出格式
 
 ## 已实施的修复
 
@@ -23,7 +36,15 @@
 - 添加请求体解析错误处理
 - 增强日志记录和调试信息
 
-### 2. 改进错误处理
+### 2. 修复ES模块兼容性
+
+- **创建ES模块版本** - 新建 `shared/api-handlers.mjs` 替代 `shared/api-handlers.cjs`
+- **转换导入语句** - 将所有 `require()` 语句替换为 `import` 语句
+- **修复依赖导入** - 使用 `import Replicate from 'replicate'` 替代 `require('replicate')`
+- **调整函数参数** - 修改 `processUpscale` 和 `processAnalyze` 的调用方式
+- **环境变量类型检查** - 添加 `REPLICATE_API_TOKEN` 的存在性验证
+
+### 3. 改进错误处理
 
 ```typescript
 // 修复前（可能返回HTML）
@@ -33,7 +54,7 @@ res.status(500).json({ error: message });
 return debug.errorResponse(res, message, 500);
 ```
 
-### 3. 增强调试功能
+### 4. 增强调试功能
 
 - 添加环境检查
 - 统一日志记录
