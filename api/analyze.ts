@@ -10,6 +10,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Replicate from 'replicate';
+import { createDebugMiddleware } from '../debug/api-debug.mjs';
 const { processAnalyze } = require('../shared/api-handlers.cjs');
 
 // 初始化Replicate客户端
@@ -19,57 +20,78 @@ const replicate = new Replicate({
 });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const debug = createDebugMiddleware('analyze');
+  
+  // 环境检查
+  debug.apiDebugger.checkEnvironment();
+  
   // 设置CORS头
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: '只支持POST请求' });
+    return debug.errorResponse(res, '只支持POST请求', 405);
   }
 
+  // 记录请求
+  debug.logRequest(req);
+
   try {
-    // 检查Replicate API token
-    if (!process.env.REPLICATE_API_TOKEN) {
-      return res.status(500).json({ error: '服务器配置错误：缺少REPLICATE_API_TOKEN' });
+    // 解析请求体
+    let parsedBody;
+    try {
+      parsedBody = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    } catch (parseError) {
+      debug.logError(parseError, { rawBody: req.body });
+      return debug.errorResponse(res, 'JSON解析错误：请求体格式不正确', 400);
     }
 
-    const { imageUrl, imageBase64 } = req.body;
+    // 检查Replicate API token
+    if (!process.env.REPLICATE_API_TOKEN) {
+      return debug.errorResponse(res, '服务器配置错误：缺少REPLICATE_API_TOKEN', 500);
+    }
+
+    const { imageUrl, imageBase64 } = parsedBody;
     const imageData = imageBase64 || imageUrl;
 
     if (!imageData) {
-      return res.status(400).json({ error: '请提供图片URL或base64数据' });
+      return debug.errorResponse(res, '请提供图片URL或base64数据', 400);
     }
 
-    console.log('开始AI分析...');
+    debug.apiDebugger.log('info', '开始AI图像质量分析...');
 
     // 使用共享的processAnalyze函数
     const analysisResult = await processAnalyze(replicate, imageData);
 
-    console.log('最终评分:', analysisResult.score);
+    debug.apiDebugger.log('info', `分析完成，评分: ${analysisResult.score}`);
 
-    // 返回结果
-    res.status(200).json({
+    const result = {
+      success: true,
       score: analysisResult.score,
-      message: '分析完成',
+      analysis: analysisResult.analysis,
+      message: analysisResult.message || '分析完成',
       timestamp: new Date().toISOString()
-    });
+    };
+    
+    // 使用调试工具记录响应
+    debug.logResponse(res, result);
+    
+    // 返回处理结果
+    return debug.safeJSON(res, result, 200);
 
   } catch (error) {
-    console.error('AI分析错误:', error);
+    // 使用调试工具记录错误
+    debug.logError(error, { requestBody: req.body });
     
     // 统一的错误处理
     const statusCode = error.statusCode || 500;
     const errorMessage = error.message || '图像分析服务暂时不可用，请稍后再试';
     
-    res.status(statusCode).json({
-      error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? (error as Error)?.message : undefined
-    });
+    return debug.errorResponse(res, errorMessage, statusCode, error instanceof Error ? error.message : '未知错误');
   }
 }
