@@ -12,7 +12,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Replicate from 'replicate';
 import { createDebugMiddleware } from '../debug/api-debug.mjs';
-const { processUpscale } = require('../shared/api-handlers.cjs');
+import { processUpscale } from '../shared/api-handlers.mjs';
 
 // 初始化Replicate客户端
 // 文档: https://replicate.com/docs/reference/node
@@ -56,18 +56,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     debug.apiDebugger.log('info', `开始图像超分处理，使用模型: ${model}`);
     
-    // 使用共享的processUpscale函数
-    const upscaledImageUrl = await processUpscale(replicate, imageBase64, model, scale, face_enhance);
+    // 检查API Token
+    if (!process.env.REPLICATE_API_TOKEN) {
+      return debug.errorResponse(res, 'REPLICATE_API_TOKEN未配置', 500);
+    }
     
-    const result = {
-      success: true,
-      upscaled_image: upscaledImageUrl,
-      scale: scale,
-      face_enhance: face_enhance,
-      model: model,
-      message: '图像超分处理完成',
-      timestamp: new Date().toISOString()
-    };
+    // 使用共享的processUpscale函数
+    const result = await processUpscale(imageBase64, scale, face_enhance, model, process.env.REPLICATE_API_TOKEN);
     
     // 使用调试工具记录响应
     debug.logResponse(res, result);

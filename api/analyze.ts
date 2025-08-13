@@ -11,7 +11,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Replicate from 'replicate';
 import { createDebugMiddleware } from '../debug/api-debug.mjs';
-const { processAnalyze } = require('../shared/api-handlers.cjs');
+import { processAnalyze } from '../shared/api-handlers.mjs';
 
 // 初始化Replicate客户端
 // 文档: https://replicate.com/docs/reference/node
@@ -65,18 +65,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     debug.apiDebugger.log('info', '开始AI图像质量分析...');
 
+    // 检查API Token
+    if (!process.env.REPLICATE_API_TOKEN) {
+      return debug.errorResponse(res, 'REPLICATE_API_TOKEN未配置', 500);
+    }
+
     // 使用共享的processAnalyze函数
-    const analysisResult = await processAnalyze(replicate, imageData);
+    const result = await processAnalyze(imageData, process.env.REPLICATE_API_TOKEN);
 
-    debug.apiDebugger.log('info', `分析完成，评分: ${analysisResult.score}`);
-
-    const result = {
-      success: true,
-      score: analysisResult.score,
-      analysis: analysisResult.analysis,
-      message: analysisResult.message || '分析完成',
-      timestamp: new Date().toISOString()
-    };
+    debug.apiDebugger.log('info', `分析完成，评分: ${result.score}`);
     
     // 使用调试工具记录响应
     debug.logResponse(res, result);
