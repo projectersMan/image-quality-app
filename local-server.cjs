@@ -9,6 +9,9 @@ const path = require('path');
 const fs = require('fs');
 const Replicate = require('replicate');
 
+// 引入共享的API处理逻辑
+const { processUpscale, processAnalyze } = require('./shared/api-handlers.cjs');
+
 // 简单的日志记录器
 class LocalLogger {
   constructor() {
@@ -88,17 +91,7 @@ class LocalLogger {
 
 const logger = new LocalLogger();
 
-// 加载环境变量
-const envPath = path.join(__dirname, '.env.local');
-if (fs.existsSync(envPath)) {
-  const envContent = fs.readFileSync(envPath, 'utf8');
-  envContent.split('\n').forEach(line => {
-    const [key, value] = line.split('=');
-    if (key && value && !key.startsWith('#')) {
-      process.env[key.trim()] = value.trim();
-    }
-  });
-}
+// 环境变量通过 setenv.sh 脚本设置，在启动前已加载到 process.env 中
 
 // 检查是否安装了必要的依赖
 try {
@@ -154,155 +147,59 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
-// 简单的图像尺寸验证（基于base64数据大小的启发式方法）
-function validateImageForModel(imageBase64, model) {
-  if (model === 'aura-sr-v2') {
-    // 对于aura-sr-v2模型，检查base64数据大小
-    // 一个1x1像素的PNG大小约为100字节的base64
-    // 只拒绝明显太小的图像（如1x1像素）
-    const base64Data = imageBase64.split(',')[1] || imageBase64;
-    const sizeInBytes = (base64Data.length * 3) / 4; // 估算原始字节大小
-    
-    if (sizeInBytes < 150) { // 小于150字节可能是1x1像素的图像
-      throw new Error('Aura SR v2 模型要求图像尺寸至少为 64x64 像素。请使用更大的图像。');
-    }
-  }
-  return true;
-}
+// 注意：图像验证和Replicate调用逻辑已移至 shared/api-handlers.js
+// 这里保留注释以说明代码重构
 
-// Replicate API调用函数
-async function callReplicateUpscale(imageBase64, scale, model, face_enhance) {
-  // 验证图像是否适合指定模型
-  try {
-    validateImageForModel(imageBase64, model);
-  } catch (error) {
-    throw error;
-  }
-  
-  let modelId;
-  let modelInput;
-  
-  if (model === 'aura-sr-v2') {
-    modelId = "zsxkib/aura-sr-v2:5c137257cce8d5ce16e8a334b70e9e025106b5580affed0bc7d48940b594e74c";
-    modelInput = {
-      image: imageBase64,
-      upscale_factor: scale,
-    };
-  } else {
-    modelId = "nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa";
-    modelInput = {
-      image: imageBase64,
-      scale: scale,
-      face_enhance: face_enhance,
-    };
-  }
-  
-  const output = await replicate.run(modelId, { input: modelInput });
-  return typeof output === 'string' ? output : (Array.isArray(output) ? output[0] : String(output));
-}
-
-// 创建超分处理函数
+// 创建超分处理函数（使用共享逻辑）
 function createUpscaleHandler() {
   return async (req, res) => {
     const startTime = Date.now();
     logger.logRequest('/api/upscale', req);
     
     try {
-      // 验证请求体
-      if (!req.body) {
-        const errorResponse = {
-          success: false,
-          error: '请求体为空',
-          message: '请提供有效的JSON数据'
-        };
-        logger.logResponse('/api/upscale', 400, errorResponse);
-        return res.status(400).json(errorResponse);
-      }
-
-      const { imageBase64, model = 'real-esrgan', scale = 2, face_enhance = false } = req.body;
-
-      // 验证必需参数
-      if (!imageBase64) {
-        const errorResponse = {
-          success: false,
-          error: '缺少图像数据',
-          message: '请提供base64编码的图像数据'
-        };
-        logger.logResponse('/api/upscale', 400, errorResponse);
-        return res.status(400).json(errorResponse);
-      }
-
-      // 验证模型参数
-      if (!['real-esrgan', 'aura-sr-v2'].includes(model)) {
-        const errorResponse = {
-          success: false,
-          error: '不支持的模型类型',
-          message: '仅支持 real-esrgan 和 aura-sr-v2 模型'
-        };
-        logger.logResponse('/api/upscale', 400, errorResponse);
-        return res.status(400).json(errorResponse);
-      }
-
-      // 验证缩放参数
-      if (![2, 4, 8].includes(scale)) {
-        const errorResponse = {
-          success: false,
-          error: '不支持的缩放倍数',
-          message: '仅支持2x、4x、8x缩放'
-        };
-        logger.logResponse('/api/upscale', 400, errorResponse);
-        return res.status(400).json(errorResponse);
-      }
-
-      // 检查Replicate API Token
-      if (!process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_TOKEN === 'r8_your_actual_token_here') {
-        const errorResponse = {
-          success: false,
-          error: 'Replicate API Token未配置',
-          message: '请在.env.local文件中配置真实的REPLICATE_API_TOKEN',
-          suggestion: '获取Token地址: https://replicate.com/account/api-tokens'
-        };
-        logger.logResponse('/api/upscale', 500, errorResponse);
-        return res.status(500).json(errorResponse);
-      }
-
-      // 模拟成功响应（实际环境中会调用Replicate API）
-      logger.log('info', '/api/upscale', 'Processing upscale request', {
-        model,
-        scale,
-        face_enhance,
-        imageSize: imageBase64.length
-      });
+      // 解析请求体参数
+      const { imageBase64, scale = 2, face_enhance = false, model = 'real-esrgan' } = req.body;
       
-      // 调用真实的Replicate API进行超分处理
-      const upscaledImageUrl = await callReplicateUpscale(imageBase64, scale, model, face_enhance);
+      // 使用共享的processUpscale函数，传递replicate客户端和参数
+      const upscaledImageUrl = await processUpscale(replicate, imageBase64, model, scale, face_enhance);
       
-      const processingTime = Date.now() - startTime;
-      const successResponse = {
+      // 构建响应结果
+      const result = {
         success: true,
-        message: '图像超分处理完成',
         upscaled_image: upscaledImageUrl,
         scale: scale,
         face_enhance: face_enhance,
         model: model,
-        timestamp: new Date().toISOString(),
-        processing_time_ms: processingTime
+        message: '图像超分处理完成',
+        timestamp: new Date().toISOString()
       };
       
-      logger.logResponse('/api/upscale', 200, successResponse);
+      // 添加本地服务器特有的信息
+      const processingTime = Date.now() - startTime;
+      const response = {
+        ...result,
+        processing_time_ms: processingTime,
+        environment: 'local-development'
+      };
       
-      res.status(200).json(successResponse);
+      logger.logResponse('/api/upscale', 200, response);
+      res.status(200).json(response);
 
     } catch (error) {
       logger.logError('/api/upscale', error, { startTime });
+      
+      // 统一的错误响应格式
       const errorResponse = {
         success: false,
-        error: '服务器内部错误',
+        error: error.name || '服务器内部错误',
         message: error.message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        environment: 'local-development'
       };
-      logger.logResponse('/api/upscale', 500, errorResponse);
-      res.status(500).json(errorResponse);
+      
+      const statusCode = error.statusCode || 500;
+      logger.logResponse('/api/upscale', statusCode, errorResponse);
+      res.status(statusCode).json(errorResponse);
     }
   };
 }
@@ -345,65 +242,53 @@ app.post('/api/upscale', async (req, res) => {
   }
 });
 
-// AI分析接口
+// AI分析接口（使用共享逻辑）
 app.post('/api/analyze', async (req, res) => {
   const startTime = Date.now();
   logger.logRequest('/api/analyze', req);
   
   try {
+    // 解析请求体参数
     const { imageUrl, imageBase64 } = req.body;
-
-    if (!imageUrl && !imageBase64) {
-      const errorResponse = {
+    const imageData = imageBase64 || imageUrl;
+    
+    if (!imageData) {
+      return res.status(400).json({ 
+        success: false,
         error: '请提供图片URL或base64数据',
         timestamp: new Date().toISOString()
-      };
-      logger.logResponse('/api/analyze', 400, errorResponse);
-      return res.status(400).json(errorResponse);
+      });
     }
-
-    // 检查Replicate API token
-    if (!process.env.REPLICATE_API_TOKEN) {
-      const errorResponse = {
-        error: 'Replicate API Token未配置',
-        message: '请在.env.local文件中配置真实的REPLICATE_API_TOKEN',
-        suggestion: '获取Token地址: https://replicate.com/account/api-tokens',
-        timestamp: new Date().toISOString()
-      };
-      logger.logResponse('/api/analyze', 500, errorResponse);
-      return res.status(500).json(errorResponse);
-    }
-
-    logger.log('info', '/api/analyze', 'Processing analyze request', {
-      hasImageUrl: !!imageUrl,
-      hasImageBase64: !!imageBase64,
-      imageSize: imageBase64 ? imageBase64.length : 0
-    });
-
-    // 模拟AI分析结果（实际环境中会调用Replicate API）
-    const mockScore = Math.random() * 4 + 6; // 6-10之间的随机分数
-    const processingTime = Date.now() - startTime;
     
-    const successResponse = {
-      score: Math.round(mockScore * 10) / 10, // 保留一位小数
-      message: '分析完成（模拟）',
-      timestamp: new Date().toISOString(),
+    // 使用共享的processAnalyze函数，传递replicate客户端和图像数据
+    const result = await processAnalyze(replicate, imageData);
+    
+    // 添加本地服务器特有的信息
+    const processingTime = Date.now() - startTime;
+    const response = {
+      ...result,
       processing_time_ms: processingTime,
-      note: '这是本地开发服务器的模拟响应'
+      environment: 'local-development'
     };
     
-    logger.logResponse('/api/analyze', 200, successResponse);
-    res.status(200).json(successResponse);
+    logger.logResponse('/api/analyze', 200, response);
+    res.status(200).json(response);
 
   } catch (error) {
     logger.logError('/api/analyze', error, { startTime });
+    
+    // 统一的错误响应格式
     const errorResponse = {
-      error: '图像分析服务暂时不可用，请稍后再试',
-      details: error.message,
-      timestamp: new Date().toISOString()
+      success: false,
+      error: error.name || '图像分析服务暂时不可用',
+      message: error.message,
+      timestamp: new Date().toISOString(),
+      environment: 'local-development'
     };
-    logger.logResponse('/api/analyze', 500, errorResponse);
-    res.status(500).json(errorResponse);
+    
+    const statusCode = error.statusCode || 500;
+    logger.logResponse('/api/analyze', statusCode, errorResponse);
+    res.status(statusCode).json(errorResponse);
   }
 });
 

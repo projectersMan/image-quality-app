@@ -5,17 +5,17 @@
 echo "🚀 开始部署图像质量AI分析应用..."
 
 # 检查环境变量
-if [ ! -f ".env.local" ]; then
-    echo "❌ 错误: 请先创建 .env.local 文件并配置你的API密钥"
+if [ ! -f "setenv.sh" ]; then
+echo "❌ 错误: 请先创建 setenv.sh 文件并配置你的API密钥"
     exit 1
 fi
 
 # 检查必要的环境变量
-if ! grep -q "REPLICATE_API_TOKEN=r8_" .env.local; then
+if ! grep -q "REPLICATE_API_TOKEN=\"r8_" setenv.sh; then
     echo "⚠️  警告: REPLICATE_API_TOKEN 未配置或格式不正确"
 fi
 
-if ! grep -q "VITE_CLERK_PUBLISHABLE_KEY=pk_" .env.local; then
+if ! grep -q "VITE_CLERK_PUBLISHABLE_KEY=\"pk_" setenv.sh; then
     echo "⚠️  警告: VITE_CLERK_PUBLISHABLE_KEY 未配置或格式不正确"
 fi
 

@@ -27,27 +27,27 @@ pnpm install
 ```
 
 ### 3. 配置环境变量
-复制 `.env.example` 到 `.env.local` 并填入你的API密钥：
+复制 `setenv.sh.example` 到 `setenv.sh` 并填入你的API密钥：
 
 ```bash
-cp .env.example .env.local
+cp setenv.sh.example setenv.sh
 ```
 
-编辑 `.env.local` 文件：
+编辑 `setenv.sh` 文件，将所有示例值替换为真实的API密钥：
 
-```env
+```bash
 # Replicate AI API - 在 https://replicate.com 获取
-REPLICATE_API_TOKEN=r8_your_replicate_api_token_here
+export REPLICATE_API_TOKEN="r8_your_replicate_api_token_here"
 
 # Clerk 用户认证 - 在 https://clerk.com 获取
-VITE_CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_publishable_key_here
-CLERK_SECRET_KEY=sk_test_your_clerk_secret_key_here
+export VITE_CLERK_PUBLISHABLE_KEY="pk_test_your_clerk_publishable_key_here"
+export CLERK_SECRET_KEY="sk_test_your_clerk_secret_key_here"
 
 # Stripe 支付 - 在 https://stripe.com 获取
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key_here
-STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
-STRIPE_WEBHOOK_SECRET=whsec_your_stripe_webhook_secret_here
-VITE_STRIPE_PRICE_ID=price_your_stripe_price_id_here
+export VITE_STRIPE_PUBLISHABLE_KEY="pk_test_your_stripe_publishable_key_here"
+export STRIPE_SECRET_KEY="sk_test_your_stripe_secret_key_here"
+export STRIPE_WEBHOOK_SECRET="whsec_your_stripe_webhook_secret_here"
+export VITE_STRIPE_PRICE_ID="price_your_stripe_price_id_here"
 ```
 
 > 🔐 **Clerk详细配置**: 如需Clerk用户认证的详细配置步骤，请参考 [CLERK_SETUP.md](./CLERK_SETUP.md)

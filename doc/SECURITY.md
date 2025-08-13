@@ -4,21 +4,21 @@
 
 ### 1. **API密钥泄露防护**
 - ✅ 创建了 `.gitignore` 文件，防止敏感文件被提交
-- ✅ 从Git历史中移除了 `.env.local` 文件
-- ✅ 创建了 `.env.example` 模板文件
+- ✅ 从Git历史中移除了 `.env` 和 `.env.local` 文件
+- ✅ 创建了 `setenv.sh.example` 模板文件
 - ✅ 确保所有环境变量通过Vercel Dashboard配置
 
 ### 2. **文件安全检查**
-- ✅ `.env.local` - 已从Git历史移除
+- ✅ `.env` 和 `.env.local` - 已从Git历史移除
 - ✅ `.gitignore` - 已创建，包含所有敏感文件类型
 - ✅ API文件 - 无硬编码密钥
 - ✅ 配置文件 - 无敏感信息泄露
 
-## 🚨 关于 .env.local 文件
+## 🚨 关于环境变量文件
 
-### **GitHub自动部署方案下的.env.local文件**
+### **GitHub自动部署方案下的环境变量管理**
 
-**结论：.env.local文件在GitHub自动部署方案下是不必要的，甚至是危险的。**
+**结论：现在使用 setenv.sh 脚本管理环境变量，更安全且灵活。**
 
 #### **原因：**
 
@@ -28,19 +28,19 @@
    ```
 
 2. **环境变量来源：**
-   - ❌ **不使用** `.env.local` 文件（容易泄露）
+   - ❌ **不使用** `.env` 或 `.env.local` 文件（容易泄露）
    - ✅ **使用** Vercel Dashboard 环境变量配置
 
 3. **安全风险：**
-   - `.env.local` 包含真实API密钥
+   - `setenv.sh` 包含真实API密钥
    - 如果被提交到Git，密钥会永久暴露
    - GitHub是公开仓库，任何人都能看到
 
 #### **正确的做法：**
 
-1. **删除 `.env.local` 文件**（如果不需要本地开发）
+1. **使用 `setenv.sh` 脚本**管理环境变量
 2. **在Vercel Dashboard配置环境变量**
-3. **本地开发时使用 `.env.local`，但确保被 `.gitignore` 忽略**
+3. **本地开发时使用 `setenv.sh`，确保被 `.gitignore` 忽略**
 
 ## 🛠️ 环境变量配置指南
 
@@ -61,9 +61,9 @@ VITE_STRIPE_PRICE_ID=price_...
 ```
 
 ### **本地开发环境**
-1. 复制 `.env.example` 为 `.env.local`
+1. 复制 `setenv.sh.example` 为 `setenv.sh`
 2. 填入真实的API密钥
-3. 确保 `.env.local` 被 `.gitignore` 忽略
+3. 确保 `setenv.sh` 被 `.gitignore` 忽略
 
 ## 🔍 安全检查命令
 
@@ -76,7 +76,7 @@ git log --name-only --oneline | grep -E "(\.env|env\.local)"
 git status
 
 # 确认.gitignore生效
-git check-ignore .env.local
+git check-ignore setenv.sh
 ```
 
 ### **检查代码中的硬编码密钥**
@@ -104,7 +104,7 @@ grep -r "https://.*\.com.*key\|token" src/ api/ --exclude-dir=node_modules
 3. **清理Git历史：**
    ```bash
    # 从Git历史中移除敏感文件
-   git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch .env.local' --prune-empty --tag-name-filter cat -- --all
+   git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch .env.local .env' --prune-empty --tag-name-filter cat -- --all
    
    # 强制推送更新的历史
    git push origin --force --all
@@ -119,7 +119,7 @@ grep -r "https://.*\.com.*key\|token" src/ api/ --exclude-dir=node_modules
 - [ ] 审查代码中是否有硬编码密钥
 
 ### **部署前检查：**
-- [ ] 确认 `.env.local` 不在Git中
+- [ ] 确认 `setenv.sh` 不在Git中
 - [ ] 验证Vercel环境变量配置
 - [ ] 测试API功能是否正常
 - [ ] 检查构建日志中是否有敏感信息

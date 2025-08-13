@@ -55,7 +55,7 @@ Clerk是一个现代化的用户认证和管理服务，为应用提供安全、
 ## 🔧 第三步：项目代码集成
 
 ### 3.1 环境变量配置
-在你的 `.env.local` 文件中添加：
+在你的 `setenv.sh` 文件中添加：
 
 ```env
 # Clerk 用户认证
@@ -241,7 +241,7 @@ import { OrganizationSwitcher, OrganizationProfile } from '@clerk/clerk-react';
 
 #### 错误1: "Clerk: publishableKey is missing"
 **原因**: 环境变量未正确配置
-**解决**: 检查 `.env.local` 文件中的 `VITE_CLERK_PUBLISHABLE_KEY`
+**解决**: 检查 `setenv.sh` 文件中的 `VITE_CLERK_PUBLISHABLE_KEY`
 
 #### 错误2: "Invalid publishable key"
 **原因**: 使用了错误的密钥或环境不匹配
@@ -288,7 +288,7 @@ import { OrganizationSwitcher, OrganizationProfile } from '@clerk/clerk-react';
 - [ ] Clerk账户已创建并验证
 - [ ] 应用已在Clerk Dashboard中创建
 - [ ] 获得了publishableKey和secretKey
-- [ ] 环境变量正确配置在 `.env.local` 中
+- [ ] 环境变量正确配置在 `setenv.sh` 中
 - [ ] 本地开发环境认证功能正常
 - [ ] 生产环境变量已配置到Vercel
 - [ ] 生产域名已添加到Clerk Dashboard

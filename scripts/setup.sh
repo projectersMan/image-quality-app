@@ -23,10 +23,10 @@ else
 fi
 
 # 检查环境变量文件
-if [ ! -f ".env.local" ]; then
+if [ ! -f "setenv.sh" ]; then
     echo "📝 创建环境变量文件..."
-    cp .env.example .env.local
-    echo "⚠️  请编辑 .env.local 文件并填入你的API密钥"
+    cp setenv.sh.example setenv.sh
+    echo "⚠️  请编辑 setenv.sh 文件并填入你的API密钥"
 else
     echo "✅ 环境变量文件已存在"
 fi
@@ -44,7 +44,7 @@ echo ""
 echo "🎉 设置完成！"
 echo ""
 echo "📋 接下来的步骤:"
-echo "1. 编辑 .env.local 文件，填入你的API密钥"
+echo "1. 编辑 setenv.sh 文件，填入你的API密钥"
 echo "2. 运行 'npm run dev' 启动开发服务器"
 echo "3. 测试功能正常后，运行 'vercel --prod' 部署到生产环境"
 echo ""

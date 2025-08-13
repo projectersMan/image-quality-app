@@ -190,7 +190,7 @@ async function main() {
   
   console.log('\n🏁 测试完成');
   console.log('\n📝 说明:');
-  console.log('- 如果看到"Replicate API Token未配置"错误，请在.env.local中配置真实的REPLICATE_API_TOKEN');
+  console.log('- 如果看到"Replicate API Token未配置"错误，请在setenv.sh中配置真实的REPLICATE_API_TOKEN');
   console.log('- 获取Token地址: https://replicate.com/account/api-tokens');
 }
 

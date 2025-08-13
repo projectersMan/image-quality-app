@@ -72,11 +72,11 @@ npm install
 pnpm install
 
 # 3. 配置环境变量
-cp .env.example .env.local
+cp setenv.sh.example setenv.sh
 ```
 
 ### 2. 编辑环境变量
-打开 `.env.local` 文件，填入你的API密钥：
+打开 `setenv.sh` 文件，填入你的API密钥：
 
 ```env
 # Replicate AI API

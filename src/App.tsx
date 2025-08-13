@@ -161,37 +161,37 @@ function App() {
     try {
       setUpscaleProgress(20);
       // 将文件转换为base64
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const imageBase64 = e.target?.result as string;
-        setUpscaleProgress(40);
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      setUpscaleProgress(40);
 
-        setUpscaleProgress(60);
-        const response = await fetch('/api/upscale', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            imageBase64,
-            scale: upscaleScale,
-            face_enhance: true,
-            model: upscaleModel
-          }),
-        });
-        setUpscaleProgress(80);
+      setUpscaleProgress(60);
+      const response = await fetch('/api/upscale', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageBase64: base64,
+          scale: upscaleScale,
+          face_enhance: true,
+          model: upscaleModel
+        }),
+      });
+      setUpscaleProgress(80);
 
-        const data = await response.json();
-        setUpscaleProgress(100);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `超分处理失败: ${response.statusText}`);
+      }
 
-        if (response.ok) {
-          setUpscaledImage(data.upscaled_image);
-        } else {
-          setError(data.error || '超分处理失败');
-        }
-      };
-
-      reader.readAsDataURL(file);
+      const result = await response.json();
+      setUpscaleProgress(100);
+      setUpscaledImage(result.upscaled_image);
     } catch (err) {
       setError(err instanceof Error ? err.message : '超分处理过程中出现错误');
     } finally {
