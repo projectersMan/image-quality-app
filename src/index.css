@@ -266,6 +266,106 @@ body {
   background-color: #535bf2;
 }
 
+/* 影调增强样式 */
+.tone-enhance-section {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background-color: rgba(255, 165, 0, 0.1);
+}
+
+.tone-enhance-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.tone-enhance-btn {
+  background-color: #f59e0b;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+}
+
+.tone-enhance-btn:hover:not(:disabled) {
+  background-color: #d97706;
+}
+
+.tone-enhance-btn:disabled {
+  background-color: #888;
+  cursor: not-allowed;
+}
+
+.tone-enhance-result {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.tone-enhance-result h3 {
+  margin-top: 0;
+  color: #f59e0b;
+}
+
+/* 细节增强样式 */
+.detail-enhance-section {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background-color: rgba(139, 69, 19, 0.1);
+}
+
+.detail-enhance-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.detail-enhance-btn {
+  background-color: #8b4513;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+}
+
+.detail-enhance-btn:hover:not(:disabled) {
+  background-color: #654321;
+}
+
+.detail-enhance-btn:disabled {
+  background-color: #888;
+  cursor: not-allowed;
+}
+
+.detail-enhance-result {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background-color: rgba(139, 69, 19, 0.1);
+}
+
+.detail-enhance-result h3 {
+  margin-top: 0;
+  color: #8b4513;
+}
+
 @media (max-width: 768px) {
   .image-comparison {
     grid-template-columns: 1fr;
@@ -275,7 +375,15 @@ body {
     align-items: center;
   }
 
-  .upscale-section {
+  .upscale-section,
+  .tone-enhance-section,
+  .detail-enhance-section {
     width: 100%;
+  }
+
+  .tone-enhance-controls,
+  .detail-enhance-controls {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

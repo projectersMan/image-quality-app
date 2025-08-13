@@ -10,7 +10,7 @@ const fs = require('fs');
 const Replicate = require('replicate');
 
 // 引入共享的API处理逻辑 - 使用ES模块版本以保持与Vercel一致
-const { processUpscale, processAnalyze } = require('./shared/api-handlers.cjs');
+const { processUpscale, processAnalyze, processToneEnhance, processDetailEnhance } = require('./shared/api-handlers.cjs');
 
 // 简单的日志记录器
 class LocalLogger {
@@ -281,6 +281,78 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
+// 影调增强接口
+app.post('/api/tone-enhance', async (req, res) => {
+  const startTime = Date.now();
+  logger.logRequest('/api/tone-enhance', req);
+
+  try {
+    // 解析请求体参数
+    const { imageBase64, enhanceType = 'auto', intensity = 1.0 } = req.body;
+
+    if (!imageBase64) {
+      return res.status(400).json({
+        success: false,
+        error: '请提供base64编码的图像数据',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 使用共享的processToneEnhance函数
+    const result = await processToneEnhance(imageBase64, enhanceType, intensity, process.env.REPLICATE_API_TOKEN);
+
+    const processingTime = Date.now() - startTime;
+    logger.logResponse('/api/tone-enhance', result, processingTime);
+
+    res.json(result);
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    logger.logError('/api/tone-enhance', error, processingTime);
+
+    res.status(500).json({
+      success: false,
+      error: error.message || '影调增强处理失败',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 细节增强接口
+app.post('/api/detail-enhance', async (req, res) => {
+  const startTime = Date.now();
+  logger.logRequest('/api/detail-enhance', req);
+
+  try {
+    // 解析请求体参数
+    const { imageBase64, enhanceType = 'denoise', strength = 15 } = req.body;
+
+    if (!imageBase64) {
+      return res.status(400).json({
+        success: false,
+        error: '请提供base64编码的图像数据',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 使用共享的processDetailEnhance函数
+    const result = await processDetailEnhance(imageBase64, enhanceType, strength, process.env.REPLICATE_API_TOKEN);
+
+    const processingTime = Date.now() - startTime;
+    logger.logResponse('/api/detail-enhance', result, processingTime);
+
+    res.json(result);
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    logger.logError('/api/detail-enhance', error, processingTime);
+
+    res.status(500).json({
+      success: false,
+      error: error.message || '细节增强处理失败',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // 健康检查
 app.get('/api/health', (req, res) => {
   res.json({
@@ -298,6 +370,8 @@ app.get('/', (req, res) => {
     endpoints: [
       'POST /api/upscale - 图像超分处理',
       'POST /api/analyze - AI图像质量分析',
+      'POST /api/tone-enhance - AI影调增强',
+      'POST /api/detail-enhance - AI细节增强',
       'GET /api/health - 健康检查'
     ],
     timestamp: new Date().toISOString()
@@ -332,6 +406,8 @@ app.listen(PORT, () => {
   console.log(`📋 可用接口:`);
   console.log(`   POST http://localhost:${PORT}/api/upscale`);
   console.log(`   POST http://localhost:${PORT}/api/analyze`);
+  console.log(`   POST http://localhost:${PORT}/api/tone-enhance`);
+  console.log(`   POST http://localhost:${PORT}/api/detail-enhance`);
   console.log(`   GET  http://localhost:${PORT}/api/health`);
   console.log(`\n💡 提示: 请确保设置了REPLICATE_API_TOKEN环境变量`);
 });

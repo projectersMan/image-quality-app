@@ -293,3 +293,217 @@ export function formatSuccessResponse(data) {
     timestamp: new Date().toISOString()
   };
 }
+
+/**
+ * 处理影调增强请求 - 统一接口
+ * @param {string} imageBase64 - Base64编码的图像数据
+ * @param {string} enhanceType - 增强类型 ('auto', 'brightness', 'contrast', 'saturation', 'color_balance')
+ * @param {number} intensity - 增强强度 (0.1-2.0)
+ * @param {string} apiToken - API Token
+ * @returns {Promise<Object>} 处理结果
+ */
+export async function processToneEnhance(imageBase64, enhanceType = 'auto', intensity = 1.0, apiToken) {
+  const startTime = Date.now();
+
+  try {
+    // 验证输入参数
+    validateImageData(imageBase64);
+
+    // 验证增强类型
+    const validTypes = ['auto', 'brightness', 'contrast', 'saturation', 'color_balance'];
+    if (!validTypes.includes(enhanceType)) {
+      throw new Error(`不支持的增强类型: ${enhanceType}。支持的类型: ${validTypes.join(', ')}`);
+    }
+
+    // 验证强度参数
+    if (intensity < 0.1 || intensity > 2.0) {
+      throw new Error('增强强度必须在0.1-2.0之间');
+    }
+
+    // 创建Replicate客户端
+    const replicate = createReplicateClient(apiToken);
+
+    console.log(`🎨 开始影调增强处理，类型: ${enhanceType}, 强度: ${intensity}`);
+
+    let output;
+
+    // 使用SwinIR进行影调增强
+    // 根据增强类型选择不同的任务类型
+    const modelName = 'jingyunliang/swinir:660d922d33153019e8c263a3bba265de882e7f4f70396546b6c9c8f9d47a021a';
+
+    let taskType;
+    switch (enhanceType) {
+      case 'auto':
+      case 'color_balance':
+        taskType = 'Color Image Denoising';
+        break;
+      case 'brightness':
+      case 'contrast':
+      case 'saturation':
+        taskType = 'Real-World Image Super-Resolution-Medium';
+        break;
+      default:
+        taskType = 'Color Image Denoising';
+    }
+
+    const input = {
+      image: imageBase64,
+      task_type: taskType,
+      noise: Math.round(15 * intensity) // 根据强度调整噪声级别
+    };
+
+    output = await replicate.run(modelName, { input });
+
+    // 处理输出结果
+    let enhancedImageUrl;
+    if (Array.isArray(output)) {
+      enhancedImageUrl = output[0];
+    } else if (typeof output === 'string') {
+      enhancedImageUrl = output;
+    } else {
+      throw new Error('模型返回了无效的输出格式');
+    }
+
+    if (!enhancedImageUrl) {
+      throw new Error('模型返回了空结果');
+    }
+
+    const processingTime = Date.now() - startTime;
+    console.log(`✅ 影调增强处理完成，耗时: ${processingTime}ms`);
+
+    return {
+      success: true,
+      enhanced_image: enhancedImageUrl,
+      enhance_type: enhanceType,
+      intensity: intensity,
+      message: '影调增强处理完成',
+      timestamp: new Date().toISOString(),
+      processing_time_ms: processingTime,
+      environment: process.env.NODE_ENV || 'development'
+    };
+
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    console.error('❌ 影调增强处理失败:', error.message);
+
+    // 统一错误处理
+    if (error.message?.includes('insufficient_quota')) {
+      throw new Error('API配额不足，请检查Replicate账户余额');
+    } else if (error.message?.includes('rate_limit')) {
+      throw new Error('请求频率过高，请稍后再试');
+    } else if (error.message?.includes('authentication')) {
+      throw new Error('API认证失败，请检查REPLICATE_API_TOKEN配置');
+    } else {
+      throw new Error(`影调增强处理失败: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * 处理细节增强请求 - 统一接口
+ * @param {string} imageBase64 - Base64编码的图像数据
+ * @param {string} enhanceType - 增强类型 ('denoise', 'sharpen', 'artifact_reduction', 'super_resolution')
+ * @param {number} strength - 增强强度 (15, 25, 50 for denoise; 2, 4 for super_resolution)
+ * @param {string} apiToken - API Token
+ * @returns {Promise<Object>} 处理结果
+ */
+export async function processDetailEnhance(imageBase64, enhanceType = 'denoise', strength = 15, apiToken) {
+  const startTime = Date.now();
+
+  try {
+    // 验证输入参数
+    validateImageData(imageBase64);
+
+    // 验证增强类型
+    const validTypes = ['denoise', 'sharpen', 'artifact_reduction', 'super_resolution'];
+    if (!validTypes.includes(enhanceType)) {
+      throw new Error(`不支持的增强类型: ${enhanceType}。支持的类型: ${validTypes.join(', ')}`);
+    }
+
+    // 创建Replicate客户端
+    const replicate = createReplicateClient(apiToken);
+
+    console.log(`🔍 开始细节增强处理，类型: ${enhanceType}, 强度: ${strength}`);
+
+    // 使用SwinIR模型进行细节增强
+    const modelName = 'jingyunliang/swinir:660d922d33153019e8c263a3bba265de882e7f4f70396546b6c9c8f9d47a021a';
+
+    let taskType, noiseLevel, jpegLevel;
+
+    switch (enhanceType) {
+      case 'denoise':
+        taskType = 'Color Image Denoising';
+        noiseLevel = [15, 25, 50].includes(strength) ? strength : 15;
+        break;
+      case 'sharpen':
+      case 'super_resolution':
+        taskType = 'Real-World Image Super-Resolution-Large';
+        noiseLevel = 15;
+        break;
+      case 'artifact_reduction':
+        taskType = 'JPEG Compression Artifact Reduction';
+        jpegLevel = [10, 20, 30, 40].includes(strength) ? strength : 40;
+        noiseLevel = 15;
+        break;
+      default:
+        taskType = 'Color Image Denoising';
+        noiseLevel = 15;
+    }
+
+    const input = {
+      image: imageBase64,
+      task_type: taskType,
+      noise: noiseLevel
+    };
+
+    if (enhanceType === 'artifact_reduction') {
+      input.jpeg = jpegLevel;
+    }
+
+    const output = await replicate.run(modelName, { input });
+
+    // 处理输出结果
+    let enhancedImageUrl;
+    if (Array.isArray(output)) {
+      enhancedImageUrl = output[0];
+    } else if (typeof output === 'string') {
+      enhancedImageUrl = output;
+    } else {
+      throw new Error('模型返回了无效的输出格式');
+    }
+
+    if (!enhancedImageUrl) {
+      throw new Error('模型返回了空结果');
+    }
+
+    const processingTime = Date.now() - startTime;
+    console.log(`✅ 细节增强处理完成，耗时: ${processingTime}ms`);
+
+    return {
+      success: true,
+      enhanced_image: enhancedImageUrl,
+      enhance_type: enhanceType,
+      strength: strength,
+      task_type: taskType,
+      message: '细节增强处理完成',
+      timestamp: new Date().toISOString(),
+      processing_time_ms: processingTime,
+      environment: process.env.NODE_ENV || 'development'
+    };
+
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    console.error('❌ 细节增强处理失败:', error.message);
+
+    // 统一错误处理
+    if (error.message?.includes('insufficient_quota')) {
+      throw new Error('API配额不足，请检查Replicate账户余额');
+    } else if (error.message?.includes('rate_limit')) {
+      throw new Error('请求频率过高，请稍后再试');
+    } else if (error.message?.includes('authentication')) {
+      throw new Error('API认证失败，请检查REPLICATE_API_TOKEN配置');
+    } else {
+      throw new Error(`细节增强处理失败: ${error.message}`);
+    }
+  }
+}

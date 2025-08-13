@@ -24,6 +24,20 @@ function App() {
   const [upscaleModel, setUpscaleModel] = useState('real-esrgan');
   const [upscaleProgress, setUpscaleProgress] = useState(0);
 
+  // 影调增强功能状态
+  const [toneEnhancedImage, setToneEnhancedImage] = useState<string | null>(null);
+  const [isToneEnhancing, setIsToneEnhancing] = useState(false);
+  const [toneEnhanceType, setToneEnhanceType] = useState('auto');
+  const [toneIntensity, setToneIntensity] = useState<number>(1.0);
+  const [toneEnhanceProgress, setToneEnhanceProgress] = useState(0);
+
+  // 细节增强功能状态
+  const [detailEnhancedImage, setDetailEnhancedImage] = useState<string | null>(null);
+  const [isDetailEnhancing, setIsDetailEnhancing] = useState(false);
+  const [detailEnhanceType, setDetailEnhanceType] = useState('denoise');
+  const [detailStrength, setDetailStrength] = useState<number>(15);
+  const [detailEnhanceProgress, setDetailEnhanceProgress] = useState(0);
+
   // 处理文件选择
   const handleFileSelect = useCallback((selectedFile: File) => {
     if (selectedFile && selectedFile.type.startsWith('image/')) {
@@ -199,6 +213,108 @@ function App() {
     }
   };
 
+  // 处理影调增强
+  const handleToneEnhance = async () => {
+    if (!file) {
+      setError('请先选择图像');
+      return;
+    }
+
+    setIsToneEnhancing(true);
+    setError(null);
+    setToneEnhanceProgress(0);
+
+    try {
+      setToneEnhanceProgress(20);
+      // 将文件转换为base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      setToneEnhanceProgress(40);
+
+      setToneEnhanceProgress(60);
+      const response = await fetch('/api/tone-enhance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageBase64: base64,
+          enhanceType: toneEnhanceType,
+          intensity: toneIntensity
+        }),
+      });
+      setToneEnhanceProgress(80);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `影调增强失败: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      setToneEnhanceProgress(100);
+      setToneEnhancedImage(result.enhanced_image);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '影调增强过程中出现错误');
+    } finally {
+      setIsToneEnhancing(false);
+    }
+  };
+
+  // 处理细节增强
+  const handleDetailEnhance = async () => {
+    if (!file) {
+      setError('请先选择图像');
+      return;
+    }
+
+    setIsDetailEnhancing(true);
+    setError(null);
+    setDetailEnhanceProgress(0);
+
+    try {
+      setDetailEnhanceProgress(20);
+      // 将文件转换为base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      setDetailEnhanceProgress(40);
+
+      setDetailEnhanceProgress(60);
+      const response = await fetch('/api/detail-enhance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageBase64: base64,
+          enhanceType: detailEnhanceType,
+          strength: detailStrength
+        }),
+      });
+      setDetailEnhanceProgress(80);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `细节增强失败: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      setDetailEnhanceProgress(100);
+      setDetailEnhancedImage(result.enhanced_image);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '细节增强过程中出现错误');
+    } finally {
+      setIsDetailEnhancing(false);
+    }
+  };
+
   // 获取评分显示样式
   const getScoreStyle = (score: number) => {
     if (score >= 8) return { background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' };
@@ -313,7 +429,7 @@ function App() {
                     <option value="real-esrgan">Real-ESRGAN (通用)</option>
                     <option value="aura-sr-v2">Aura SR v2 (高质量)</option>
                   </select>
-                  
+
                   <label htmlFor="scale-select">放大倍数:</label>
                   <select
                     id="scale-select"
@@ -342,11 +458,136 @@ function App() {
                   )}
                 </button>
                 {isUpscaling && (
-                   <ProgressBar 
-                     isVisible={isUpscaling} 
-                     progress={upscaleProgress} 
-                     message="超分处理进度" 
-                     type="upscale" 
+                   <ProgressBar
+                     isVisible={isUpscaling}
+                     progress={upscaleProgress}
+                     message="超分处理进度"
+                     type="upscale"
+                   />
+                 )}
+              </div>
+
+              {/* 影调增强功能 */}
+              <div className="tone-enhance-section">
+                <div className="tone-enhance-controls">
+                  <label htmlFor="tone-type-select">影调增强类型:</label>
+                  <select
+                    id="tone-type-select"
+                    value={toneEnhanceType}
+                    onChange={(e) => setToneEnhanceType(e.target.value)}
+                    disabled={isToneEnhancing}
+                  >
+                    <option value="auto">自动增强</option>
+                    <option value="brightness">亮度调整</option>
+                    <option value="contrast">对比度调整</option>
+                    <option value="saturation">饱和度调整</option>
+                    <option value="color_balance">色彩平衡</option>
+                  </select>
+
+                  <label htmlFor="tone-intensity-select">增强强度:</label>
+                  <select
+                    id="tone-intensity-select"
+                    value={toneIntensity}
+                    onChange={(e) => setToneIntensity(Number(e.target.value))}
+                    disabled={isToneEnhancing}
+                  >
+                    <option value={0.5}>轻微 (0.5x)</option>
+                    <option value={1.0}>标准 (1.0x)</option>
+                    <option value={1.5}>增强 (1.5x)</option>
+                    <option value={2.0}>强烈 (2.0x)</option>
+                  </select>
+                </div>
+
+                <button
+                  className="tone-enhance-btn"
+                  onClick={handleToneEnhance}
+                  disabled={isToneEnhancing}
+                >
+                  {isToneEnhancing ? (
+                    <>
+                      <span className="loading"></span>
+                      影调增强中...
+                    </>
+                  ) : (
+                    '🎨 AI影调增强'
+                  )}
+                </button>
+                {isToneEnhancing && (
+                   <ProgressBar
+                     isVisible={isToneEnhancing}
+                     progress={toneEnhanceProgress}
+                     message="影调增强进度"
+                     type="tone-enhance"
+                   />
+                 )}
+              </div>
+
+              {/* 细节增强功能 */}
+              <div className="detail-enhance-section">
+                <div className="detail-enhance-controls">
+                  <label htmlFor="detail-type-select">细节增强类型:</label>
+                  <select
+                    id="detail-type-select"
+                    value={detailEnhanceType}
+                    onChange={(e) => setDetailEnhanceType(e.target.value)}
+                    disabled={isDetailEnhancing}
+                  >
+                    <option value="denoise">图像去噪</option>
+                    <option value="sharpen">图像锐化</option>
+                    <option value="artifact_reduction">压缩伪影减少</option>
+                    <option value="super_resolution">超分辨率</option>
+                  </select>
+
+                  <label htmlFor="detail-strength-select">增强强度:</label>
+                  <select
+                    id="detail-strength-select"
+                    value={detailStrength}
+                    onChange={(e) => setDetailStrength(Number(e.target.value))}
+                    disabled={isDetailEnhancing}
+                  >
+                    {detailEnhanceType === 'denoise' ? (
+                      <>
+                        <option value={15}>轻微 (15)</option>
+                        <option value={25}>中等 (25)</option>
+                        <option value={50}>强烈 (50)</option>
+                      </>
+                    ) : detailEnhanceType === 'artifact_reduction' ? (
+                      <>
+                        <option value={10}>轻微 (10)</option>
+                        <option value={20}>中等 (20)</option>
+                        <option value={30}>增强 (30)</option>
+                        <option value={40}>强烈 (40)</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value={15}>标准</option>
+                        <option value={25}>增强</option>
+                        <option value={50}>强烈</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                <button
+                  className="detail-enhance-btn"
+                  onClick={handleDetailEnhance}
+                  disabled={isDetailEnhancing}
+                >
+                  {isDetailEnhancing ? (
+                    <>
+                      <span className="loading"></span>
+                      细节增强中...
+                    </>
+                  ) : (
+                    '🔍 AI细节增强'
+                  )}
+                </button>
+                {isDetailEnhancing && (
+                   <ProgressBar
+                     isVisible={isDetailEnhancing}
+                     progress={detailEnhanceProgress}
+                     message="细节增强进度"
+                     type="detail-enhance"
                    />
                  )}
               </div>
@@ -404,6 +645,74 @@ function App() {
                       className="download-btn"
                     >
                       📥 下载超分图像
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 影调增强结果显示 */}
+          {toneEnhancedImage && (
+            <div className="tone-enhance-result">
+              <h3>🎨 影调增强结果</h3>
+              <div className="image-comparison">
+                <div className="comparison-item">
+                  <h4>原图</h4>
+                  <img
+                    src={imagePreview || ''}
+                    alt="原图"
+                    style={{ maxWidth: '100%', height: 'auto', border: '1px solid #333' }}
+                  />
+                </div>
+                <div className="comparison-item">
+                  <h4>影调增强结果 ({toneEnhanceType})</h4>
+                  <img
+                    src={toneEnhancedImage}
+                    alt="影调增强结果"
+                    style={{ maxWidth: '100%', height: 'auto', border: '1px solid #333' }}
+                  />
+                  <div style={{ marginTop: '1rem' }}>
+                    <a
+                      href={toneEnhancedImage}
+                      download={`tone_enhanced_${toneEnhanceType}_${file?.name || 'image'}`}
+                      className="download-btn"
+                    >
+                      📥 下载影调增强图像
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 细节增强结果显示 */}
+          {detailEnhancedImage && (
+            <div className="detail-enhance-result">
+              <h3>🔍 细节增强结果</h3>
+              <div className="image-comparison">
+                <div className="comparison-item">
+                  <h4>原图</h4>
+                  <img
+                    src={imagePreview || ''}
+                    alt="原图"
+                    style={{ maxWidth: '100%', height: 'auto', border: '1px solid #333' }}
+                  />
+                </div>
+                <div className="comparison-item">
+                  <h4>细节增强结果 ({detailEnhanceType})</h4>
+                  <img
+                    src={detailEnhancedImage}
+                    alt="细节增强结果"
+                    style={{ maxWidth: '100%', height: 'auto', border: '1px solid #333' }}
+                  />
+                  <div style={{ marginTop: '1rem' }}>
+                    <a
+                      href={detailEnhancedImage}
+                      download={`detail_enhanced_${detailEnhanceType}_${file?.name || 'image'}`}
+                      className="download-btn"
+                    >
+                      📥 下载细节增强图像
                     </a>
                   </div>
                 </div>
