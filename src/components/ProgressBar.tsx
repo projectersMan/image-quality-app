@@ -4,7 +4,7 @@ interface ProgressBarProps {
   isVisible: boolean;
   progress: number; // 0-100
   message?: string;
-  type?: 'analyze' | 'upscale';
+  type?: 'analyze' | 'upscale' | 'tone-enhance' | 'detail-enhance';
 }
 
 const ProgressBar: React.FC<ProgressBarProps> = ({ 
@@ -21,6 +21,10 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         return 'linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)';
       case 'upscale':
         return 'linear-gradient(90deg, #10b981 0%, #059669 100%)';
+      case 'tone-enhance':
+        return 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)';
+      case 'detail-enhance':
+        return 'linear-gradient(90deg, #8b4513 0%, #654321 100%)';
       default:
         return 'linear-gradient(90deg, #6b7280 0%, #4b5563 100%)';
     }
@@ -32,6 +36,10 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         return '🤖';
       case 'upscale':
         return '🚀';
+      case 'tone-enhance':
+        return '🎨';
+      case 'detail-enhance':
+        return '🔍';
       default:
         return '⚡';
     }
