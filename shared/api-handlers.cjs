@@ -485,7 +485,7 @@ async function processDetailEnhance(imageBase64, enhanceType = 'general', streng
       enhanced_image: enhancedImageUrl,
       enhance_type: enhanceType,
       strength: strength,
-      task_type: taskType,
+      model_type: modelType,
       message: '细节增强处理完成',
       timestamp: new Date().toISOString(),
       processing_time_ms: processingTime,
