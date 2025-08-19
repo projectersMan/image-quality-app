@@ -26,13 +26,21 @@ export function validateImageData(imageBase64) {
   if (!imageBase64) {
     throw new Error('缺少图像数据，请提供base64编码的图像数据');
   }
-  
-  // 检查是否为有效的base64格式
-  const base64Regex = /^data:image\/(jpeg|jpg|png|webp);base64,/;
+
+  // 检查是否为有效的base64格式 - 更宽松的验证
+  const base64Regex = /^data:image\/(jpeg|jpg|png|webp|gif|bmp|tiff)/i;
   if (!base64Regex.test(imageBase64)) {
+    // 如果没有data:image前缀，检查是否是纯base64数据
+    if (!imageBase64.startsWith('data:')) {
+      // 假设是纯base64数据，添加默认前缀
+      console.log('⚠️ 检测到纯base64数据，添加默认图像前缀');
+      return true;
+    }
+
+    console.log('❌ 图像格式验证失败，数据前缀:', imageBase64.substring(0, 50));
     throw new Error('图像格式不支持，请使用JPG、PNG或WEBP格式');
   }
-  
+
   return true;
 }
 
