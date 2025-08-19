@@ -499,3 +499,122 @@ export async function processDetailEnhance(imageBase64, enhanceType = 'general',
     }
   }
 }
+
+/**
+ * 处理Autopilot自动增强请求 - 统一接口
+ * @param {string} imageBase64 - Base64编码的图像数据
+ * @param {Object} recommendations - 增强建议配置
+ * @param {string} apiToken - API Token
+ * @returns {Promise<Object>} 处理结果
+ */
+export async function processAutopilotEnhance(imageBase64, recommendations, apiToken) {
+  const startTime = Date.now();
+  const results = {
+    original: imageBase64,
+    steps: [],
+    final: imageBase64
+  };
+
+  try {
+    console.log('🤖 开始Autopilot自动增强流程');
+
+    let currentImage = imageBase64;
+
+    // 按优先级执行增强
+    for (const step of recommendations.priority) {
+      const stepStartTime = Date.now();
+
+      try {
+        if (step === 'tone' && recommendations.tone?.enabled) {
+          console.log(`🎨 执行影调增强: ${recommendations.tone.type}, 强度: ${recommendations.tone.intensity}`);
+          const result = await processToneEnhance(
+            currentImage,
+            recommendations.tone.type,
+            recommendations.tone.intensity,
+            apiToken
+          );
+          currentImage = result.enhanced_image;
+
+          results.steps.push({
+            type: 'tone',
+            config: recommendations.tone,
+            result: result.enhanced_image,
+            processing_time_ms: Date.now() - stepStartTime,
+            success: true
+          });
+        }
+
+        if (step === 'detail' && recommendations.detail?.enabled) {
+          console.log(`🔍 执行细节增强: ${recommendations.detail.type}, 强度: ${recommendations.detail.strength}`);
+          const result = await processDetailEnhance(
+            currentImage,
+            recommendations.detail.type,
+            recommendations.detail.strength,
+            apiToken
+          );
+          currentImage = result.enhanced_image;
+
+          results.steps.push({
+            type: 'detail',
+            config: recommendations.detail,
+            result: result.enhanced_image,
+            processing_time_ms: Date.now() - stepStartTime,
+            success: true
+          });
+        }
+
+        if (step === 'upscale' && recommendations.upscale?.enabled) {
+          console.log(`🚀 执行超分辨率: ${recommendations.upscale.scale}x, 模型: ${recommendations.upscale.model}`);
+          const result = await processUpscale(
+            currentImage,
+            recommendations.upscale.scale,
+            true,
+            recommendations.upscale.model,
+            apiToken
+          );
+          currentImage = result.upscaled_image;
+
+          results.steps.push({
+            type: 'upscale',
+            config: recommendations.upscale,
+            result: result.upscaled_image,
+            processing_time_ms: Date.now() - stepStartTime,
+            success: true
+          });
+        }
+
+      } catch (stepError) {
+        console.error(`❌ 步骤 ${step} 执行失败:`, stepError.message);
+        results.steps.push({
+          type: step,
+          config: recommendations[step],
+          error: stepError.message,
+          processing_time_ms: Date.now() - stepStartTime,
+          success: false
+        });
+      }
+    }
+
+    results.final = currentImage;
+    const totalProcessingTime = Date.now() - startTime;
+
+    console.log(`✅ Autopilot自动增强完成，总耗时: ${totalProcessingTime}ms`);
+
+    return {
+      success: true,
+      results,
+      total_steps: results.steps.length,
+      successful_steps: results.steps.filter(s => s.success).length,
+      message: 'Autopilot自动增强完成',
+      timestamp: new Date().toISOString(),
+      processing_time_ms: totalProcessingTime,
+      environment: process.env.NODE_ENV || 'development'
+    };
+
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    console.error('❌ Autopilot自动增强失败:', error.message);
+
+    throw new Error(`Autopilot自动增强失败: ${error.message}`);
+  }
+}

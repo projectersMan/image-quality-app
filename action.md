@@ -208,6 +208,30 @@ Vercel部署时出现TypeScript编译错误：
 - **提交时间**: 2025-08-13 23:56
 - **提交信息**: 🎨 重新设计影调增强和细节增强功能
 
+## Bug修复 - 2025-08-14 00:05
+
+### 问题描述
+用户报告细节增强功能出现错误：`❌ 细节增强处理失败: taskType is not defined`
+
+### 问题原因
+在重新设计细节增强功能时，将变量名从`taskType`改为`modelType`，但在返回结果对象中仍然引用了旧的`taskType`变量，导致运行时错误。
+
+### 修复措施
+1. **修复shared/api-handlers.mjs**：将返回结果中的`task_type: taskType`改为`model_type: modelType`
+2. **修复shared/api-handlers.cjs**：同步修复CommonJS版本中的相同问题
+3. **测试验证**：使用简单测试确认错误已解决
+
+### 修复验证
+```bash
+# 测试结果显示错误已修复
+✅ taskType 错误已修复，现在是其他错误: API认证失败，请检查REPLICATE_API_TOKEN配置
+```
+
+### Git提交信息
+- **提交哈希**: f6e0f92
+- **提交时间**: 2025-08-14 00:05
+- **提交信息**: 🐛 修复细节增强功能中的taskType未定义错误
+
 ## 下一步建议
 
 ### 下一步修改建议(局部)

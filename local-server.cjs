@@ -10,7 +10,108 @@ const fs = require('fs');
 const Replicate = require('replicate');
 
 // 引入共享的API处理逻辑 - 使用ES模块版本以保持与Vercel一致
-const { processUpscale, processAnalyze, processToneEnhance, processDetailEnhance } = require('./shared/api-handlers.cjs');
+const { processUpscale, processAnalyze, processToneEnhance, processDetailEnhance, processAutopilotEnhance } = require('./shared/api-handlers.cjs');
+
+// Autopilot辅助函数
+function calculateQualityScores(analysis) {
+  // 影调质量评分
+  const toneScore = calculateToneScore(analysis);
+
+  // 细节清晰度评分
+  const detailScore = calculateDetailScore(analysis);
+
+  // 分辨率适配评分
+  const resolutionScore = calculateResolutionScore(analysis);
+
+  return {
+    tone: Math.round(toneScore),
+    detail: Math.round(detailScore),
+    resolution: Math.round(resolutionScore),
+    overall: Math.round((toneScore + detailScore + resolutionScore) / 3)
+  };
+}
+
+function calculateToneScore(analysis) {
+  let score = 70; // 基础分数
+
+  if (analysis.quality_issues) {
+    if (analysis.quality_issues.includes('underexposed')) score -= 20;
+    if (analysis.quality_issues.includes('overexposed')) score -= 20;
+    if (analysis.quality_issues.includes('low_contrast')) score -= 15;
+    if (analysis.quality_issues.includes('color_cast')) score -= 15;
+  }
+
+  return Math.max(0, Math.min(100, score));
+}
+
+function calculateDetailScore(analysis) {
+  let score = 75; // 基础分数
+
+  if (analysis.quality_issues) {
+    if (analysis.quality_issues.includes('blurry')) score -= 25;
+    if (analysis.quality_issues.includes('noisy')) score -= 20;
+    if (analysis.quality_issues.includes('compression_artifacts')) score -= 15;
+    if (analysis.quality_issues.includes('soft_details')) score -= 10;
+  }
+
+  return Math.max(0, Math.min(100, score));
+}
+
+function calculateResolutionScore(analysis) {
+  let score = 80; // 基础分数
+
+  if (analysis.image_info) {
+    const { width, height } = analysis.image_info;
+    const totalPixels = width * height;
+
+    if (totalPixels < 500000) score -= 30; // 小于0.5MP
+    else if (totalPixels < 1000000) score -= 20; // 小于1MP
+    else if (totalPixels < 2000000) score -= 10; // 小于2MP
+  }
+
+  return Math.max(0, Math.min(100, score));
+}
+
+function generateEnhancementRecommendations(scores) {
+  const recommendations = {
+    tone: null,
+    detail: null,
+    upscale: null,
+    priority: []
+  };
+
+  // 影调增强建议
+  if (scores.tone < 80) {
+    recommendations.tone = {
+      enabled: true,
+      type: scores.tone < 50 ? 'night' : 'general',
+      intensity: scores.tone < 40 ? 2.0 : scores.tone < 60 ? 1.5 : 1.0
+    };
+    recommendations.priority.push('tone');
+  }
+
+  // 细节增强建议
+  if (scores.detail < 80) {
+    recommendations.detail = {
+      enabled: true,
+      type: scores.detail < 50 ? 'general' : 'general',
+      strength: scores.detail < 40 ? 3 : scores.detail < 60 ? 2 : 1
+    };
+    recommendations.priority.push('detail');
+  }
+
+  // 超分辨率建议
+  if (scores.resolution < 70) {
+    recommendations.upscale = {
+      enabled: true,
+      scale: scores.resolution < 40 ? 4 : scores.resolution < 60 ? 2 : 2,
+      model: 'real-esrgan'
+    };
+    recommendations.priority.push('upscale');
+  }
+
+  return recommendations;
+}
 
 // 简单的日志记录器
 class LocalLogger {
@@ -353,6 +454,99 @@ app.post('/api/detail-enhance', async (req, res) => {
   }
 });
 
+// Autopilot智能分析接口
+app.post('/api/autopilot-analyze', async (req, res) => {
+  const startTime = Date.now();
+  logger.logRequest('/api/autopilot-analyze', req);
+
+  try {
+    const { imageBase64 } = req.body;
+
+    if (!imageBase64) {
+      return res.status(400).json({
+        success: false,
+        error: '请提供base64编码的图像数据',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 使用现有的分析功能获取基础质量信息
+    const basicAnalysis = await processAnalyze(imageBase64, process.env.REPLICATE_API_TOKEN);
+
+    // 计算质量评分
+    const scores = calculateQualityScores(basicAnalysis);
+
+    // 生成增强建议
+    const recommendations = generateEnhancementRecommendations(scores);
+
+    const result = {
+      success: true,
+      scores,
+      recommendations,
+      message: 'Autopilot智能分析完成',
+      timestamp: new Date().toISOString(),
+      environment: 'local-development'
+    };
+
+    const processingTime = Date.now() - startTime;
+    logger.logResponse('/api/autopilot-analyze', result, processingTime);
+
+    res.json(result);
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    logger.logError('/api/autopilot-analyze', error, processingTime);
+
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Autopilot分析失败',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Autopilot自动增强接口
+app.post('/api/autopilot-enhance', async (req, res) => {
+  const startTime = Date.now();
+  logger.logRequest('/api/autopilot-enhance', req);
+
+  try {
+    const { imageBase64, recommendations } = req.body;
+
+    if (!imageBase64) {
+      return res.status(400).json({
+        success: false,
+        error: '请提供base64编码的图像数据',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    if (!recommendations || !recommendations.priority) {
+      return res.status(400).json({
+        success: false,
+        error: '缺少增强建议配置',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 使用共享的processAutopilotEnhance函数
+    const result = await processAutopilotEnhance(imageBase64, recommendations, process.env.REPLICATE_API_TOKEN);
+
+    const processingTime = Date.now() - startTime;
+    logger.logResponse('/api/autopilot-enhance', result, processingTime);
+
+    res.json(result);
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    logger.logError('/api/autopilot-enhance', error, processingTime);
+
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Autopilot增强失败',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // 健康检查
 app.get('/api/health', (req, res) => {
   res.json({
@@ -372,6 +566,8 @@ app.get('/', (req, res) => {
       'POST /api/analyze - AI图像质量分析',
       'POST /api/tone-enhance - AI影调增强',
       'POST /api/detail-enhance - AI细节增强',
+      'POST /api/autopilot-analyze - Autopilot智能分析',
+      'POST /api/autopilot-enhance - Autopilot自动增强',
       'GET /api/health - 健康检查'
     ],
     timestamp: new Date().toISOString()
@@ -408,6 +604,8 @@ app.listen(PORT, () => {
   console.log(`   POST http://localhost:${PORT}/api/analyze`);
   console.log(`   POST http://localhost:${PORT}/api/tone-enhance`);
   console.log(`   POST http://localhost:${PORT}/api/detail-enhance`);
+  console.log(`   POST http://localhost:${PORT}/api/autopilot-analyze`);
+  console.log(`   POST http://localhost:${PORT}/api/autopilot-enhance`);
   console.log(`   GET  http://localhost:${PORT}/api/health`);
   console.log(`\n💡 提示: 请确保设置了REPLICATE_API_TOKEN环境变量`);
 });
